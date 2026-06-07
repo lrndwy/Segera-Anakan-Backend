@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "segara-anakan-hub-api",
     "name": "SegaraAnakan Hub API",
-    "description": "Koleksi lengkap endpoint backend SegaraAnakan Hub.\n\nSetup:\n1. Set variabel baseUrl (default: http://localhost:3000)\n2. Jalankan Login di folder Auth\n3. Endpoint public tidak memerlukan token\n\nRole:\n- ADMIN_KECAMATAN: akses penuh\n- ADMIN_DESA: village-scoped\n- KADER_DESA: monitoring air",
+    "description": "Koleksi lengkap endpoint backend SegaraAnakan Hub (93 endpoint).\n\nSetup:\n1. Set variabel baseUrl (default: http://localhost:3100 — port host Docker)\n2. Jalankan Login di folder Auth\n3. Endpoint public tidak memerlukan token\n\nRole:\n- ADMIN_KECAMATAN: akses penuh\n- ADMIN_DESA: village-scoped\n- KADER_DESA: monitoring air",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3000"
+      "value": "http://localhost:3100"
     },
     {
       "key": "apiPrefix",
@@ -998,6 +998,50 @@
                       "type": "string"
                     }
                   ]
+                }
+              }
+            },
+            {
+              "name": "Send Village Alert",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/rob/webhook/village-alert",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "{{apiPrefix}}",
+                    "rob",
+                    "webhook",
+                    "village-alert"
+                  ]
+                },
+                "description": "ADMIN_KECAMATAN — kirim peringatan rob ke desa tertentu via webhook WhatsApp",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"villageId\": \"{{villageId}}\",\n  \"message\": \"Peringatan: kondisi rob tinggi, waspadai aktivitas di pantai.\",\n  \"severityLevel\": \"WASPADA\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
                 }
               }
             }
@@ -1993,6 +2037,34 @@
           "description": "",
           "item": [
             {
+              "name": "List Commodity Catalog",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/commodities?search=ikan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "{{apiPrefix}}",
+                    "commodities"
+                  ],
+                  "query": [
+                    {
+                      "key": "search",
+                      "value": "ikan",
+                      "description": "Opsional — filter nama komoditas atau kategori"
+                    }
+                  ]
+                },
+                "description": "Public — katalog master komoditas (id, name, categoryName)",
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            },
+            {
               "name": "List Commodity Inventory",
               "request": {
                 "method": "GET",
@@ -2805,6 +2877,87 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "description": "ADMIN_KECAMATAN & ADMIN_DESA — statistik utama dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{apiPrefix}}",
+                "dashboard",
+                "stats"
+              ]
+            },
+            "description": "ADMIN_DESA: data desa sendiri. ADMIN_KECAMATAN: semua desa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "description": "ADMIN_KECAMATAN & ADMIN_DESA — laporan revenue dan pengunjung",
+      "item": [
+        {
+          "name": "Get Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/reports?start_date=2026-06-01&end_date=2026-06-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{apiPrefix}}",
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2026-06-01",
+                  "description": "YYYY-MM-DD (wajib)"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-06-30",
+                  "description": "YYYY-MM-DD (wajib, >= start_date)"
+                }
+              ]
+            },
+            "description": "ADMIN_DESA: data desa sendiri. ADMIN_KECAMATAN: semua desa.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
         }
       ]
     },
