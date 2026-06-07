@@ -1,10 +1,13 @@
-import { count, desc, eq, sql } from 'drizzle-orm';
+import { count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import type { Database } from '../../src/db/client';
 import {
   agencyNotificationLogs,
   auditLogs,
+  boatAssignments,
   boatOwners,
+  bookingPayments,
+  bookings,
   emailLogs,
   manifestItems,
   notificationLogs,
@@ -18,6 +21,30 @@ import {
 
 export const deactivateBoatOwnersInVillage = async (db: Database, villageId: string): Promise<void> => {
   await db.update(boatOwners).set({ isActive: false }).where(eq(boatOwners.villageId, villageId));
+};
+
+export const resetVillageTourismData = async (db: Database, villageId: string): Promise<void> => {
+  const villageBookings = await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.villageId, villageId));
+
+  const bookingIds = villageBookings.map((row) => row.id);
+  if (bookingIds.length > 0) {
+    await db.delete(boatAssignments).where(inArray(boatAssignments.bookingId, bookingIds));
+    await db.delete(bookingPayments).where(inArray(bookingPayments.bookingId, bookingIds));
+    await db.delete(bookings).where(inArray(bookings.id, bookingIds));
+  }
+};
+
+export const resetBookingsByDates = async (db: Database, dates: string[]): Promise<void> => {
+  const datedBookings = await db.select({ id: bookings.id }).from(bookings).where(inArray(bookings.bookingDate, dates));
+
+  const bookingIds = datedBookings.map((row) => row.id);
+  if (bookingIds.length === 0) {
+    return;
+  }
+
+  await db.delete(boatAssignments).where(inArray(boatAssignments.bookingId, bookingIds));
+  await db.delete(bookingPayments).where(inArray(bookingPayments.bookingId, bookingIds));
+  await db.delete(bookings).where(inArray(bookings.id, bookingIds));
 };
 
 export const countAuditLogs = async (db: Database, module: string, action: string, entityId?: string): Promise<number> => {

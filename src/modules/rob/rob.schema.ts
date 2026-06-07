@@ -16,6 +16,12 @@ export const manualOverrideSchema = z.object({
   reason: z.string().trim().min(1, 'Reason is required'),
 });
 
+export const villageAlertSchema = z.object({
+  villageId: z.string().uuid(),
+  message: z.string().trim().min(1, 'Message is required'),
+  severityLevel: robStatusSchema,
+});
+
 export const robStatusResponseSchema = z.object({
   status: robStatusSchema,
   score: z.number(),
@@ -70,3 +76,4 @@ export const errorEnvelopeSchema = z.object({
 
 export type ListRobHistoriesQuery = z.infer<typeof listRobHistoriesQuerySchema>;
 export type ManualOverrideInput = z.infer<typeof manualOverrideSchema>;
+export type VillageAlertInput = z.infer<typeof villageAlertSchema>;

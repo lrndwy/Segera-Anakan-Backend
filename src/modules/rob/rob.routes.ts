@@ -14,6 +14,7 @@ import {
   listRobHistoriesQuerySchema,
   manualOverrideSchema,
   messageEnvelopeSchema,
+  villageAlertSchema,
   paginatedEnvelopeSchema,
   robHistoryItemResponseSchema,
   robStatusResponseSchema,
@@ -175,6 +176,44 @@ export const createAdminRobRouter = ({ robGuardianService, authMiddleware }: Rob
   router.openapi(testWebhookRoute, async (context) => {
     await robGuardianService.testWebhook(getActorMeta(context));
     return context.json({ success: true, message: 'Webhook test sent successfully' }, 201);
+  });
+
+  const villageAlertRoute = createRoute({
+    method: 'post',
+    path: '/webhook/village-alert',
+    tags: ['Rob Guardian'],
+    summary: 'Send rob alert to a specific village via webhook',
+    security: [{ bearerAuth: [] }],
+    middleware: adminOnlyMiddleware,
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: villageAlertSchema,
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Alert sent to village successfully',
+        content: {
+          'application/json': {
+            schema: messageEnvelopeSchema,
+          },
+        },
+      },
+      401: { description: 'Unauthorized', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+      403: { description: 'Forbidden', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+      404: { description: 'Not found', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+      422: { description: 'Validation error' },
+    },
+  });
+
+  router.openapi(villageAlertRoute, async (context) => {
+    const body = context.req.valid('json');
+    await robGuardianService.sendVillageAlert(body, getActorMeta(context));
+    return context.json({ success: true, message: 'Alert sent to village successfully' }, 200);
   });
 
   return router;

@@ -9,7 +9,7 @@ import type { AuditLogService } from '../../services/audit-log.service';
 import type { SettingsService } from '../settings/settings.service';
 import { VillageRepository } from '../village/village.repository';
 import { BmkgService } from './bmkg.service';
-import type { ListRobHistoriesQuery, ManualOverrideInput } from './rob.schema';
+import type { ListRobHistoriesQuery, ManualOverrideInput, VillageAlertInput } from './rob.schema';
 import { evaluateRobMetrics, scoreFromManualStatus, toNumber, type RobThresholds } from './rob-score';
 import { RobRepository } from './rob.repository';
 import type { RobHistoryItemResponse, RobServiceMeta, RobStatusResponse } from './rob.types';
@@ -222,6 +222,35 @@ export class RobGuardianService {
       entityType: 'rob_webhook_logs',
       entityId: randomUUID(),
       ipAddress: meta.ipAddress,
+    });
+  }
+
+  async sendVillageAlert(input: VillageAlertInput, meta: RobServiceMeta): Promise<void> {
+    const villageRepository = new VillageRepository(this.db);
+    const village = await villageRepository.findById(input.villageId);
+
+    if (!village) {
+      throw new NotFoundException('Village not found');
+    }
+
+    const webhookLog = await this.webhookService.sendVillageAlert({
+      villageId: input.villageId,
+      message: input.message,
+      severityLevel: input.severityLevel,
+    });
+
+    await this.auditLogService.create({
+      userId: meta.actorUserId,
+      action: 'SEND_VILLAGE_ALERT',
+      module: 'ROB_GUARDIAN',
+      entityType: 'rob_webhook_logs',
+      entityId: webhookLog.id,
+      ipAddress: meta.ipAddress,
+      newData: {
+        villageId: input.villageId,
+        message: input.message,
+        severityLevel: input.severityLevel,
+      },
     });
   }
 }

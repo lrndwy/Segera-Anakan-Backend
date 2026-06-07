@@ -27,6 +27,8 @@ import {
   countWaterAlerts,
   countWebhookLogs,
   deactivateBoatOwnersInVillage,
+  resetBookingsByDates,
+  resetVillageTourismData,
   getCurrentRobStatus,
   getLatestAuditLogByAction,
   getManifestItemsByOrderId,
@@ -443,6 +445,9 @@ describe('System E2E', () => {
     });
 
     it('boat rotation — A → B → C → A', async () => {
+      const rotationDates = ['2027-01-01', '2027-01-02', '2027-01-03', '2027-01-04'];
+      await resetBookingsByDates(context.db, rotationDates);
+      await resetVillageTourismData(context.db, VILLAGE_KLACES);
       await deactivateBoatOwnersInVillage(context.db, VILLAGE_KLACES);
 
       const rotationDestination = await createDestination(context.app, tokens.adminKecamatan, {
@@ -482,10 +487,10 @@ describe('System E2E', () => {
         return id;
       };
 
-      const b1 = await completeBooking('2027-01-01');
-      const b2 = await completeBooking('2027-01-02');
-      const b3 = await completeBooking('2027-01-03');
-      const b4 = await completeBooking('2027-01-04');
+      const b1 = await completeBooking(rotationDates[0]);
+      const b2 = await completeBooking(rotationDates[1]);
+      const b3 = await completeBooking(rotationDates[2]);
+      const b4 = await completeBooking(rotationDates[3]);
 
       const owners = await Promise.all(
         [b1, b2, b3, b4].map(async (id) => (await getBoatAssignments(context.db, id))[0]?.boatOwnerId),

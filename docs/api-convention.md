@@ -432,6 +432,7 @@ DELETE
 VERIFY_PAYMENT
 CONFIRM_BOOKING
 CONFIRM_MANIFEST
+SEND_VILLAGE_ALERT
 LOGIN
 ```
 
@@ -476,6 +477,8 @@ POST /booking-payments
 ## Commodity
 
 ```http
+GET /commodities
+
 GET /commodity-inventory
 
 POST /commodity-orders
@@ -502,6 +505,46 @@ GET /water-status
 # ADMIN ENDPOINTS
 
 Seluruh endpoint selain public endpoint wajib menggunakan JWT.
+
+---
+
+## Dashboard
+
+```http
+GET /dashboard/stats
+```
+
+Role: `ADMIN_KECAMATAN`, `ADMIN_DESA`
+
+Ownership: `ADMIN_DESA` hanya data desa sendiri.
+
+---
+
+## Reports
+
+```http
+GET /reports?start_date=&end_date=
+```
+
+Role: `ADMIN_KECAMATAN`, `ADMIN_DESA`
+
+Ownership: `ADMIN_DESA` hanya data desa sendiri.
+
+---
+
+## ROB Guardian (Admin)
+
+```http
+POST /rob/manual-override
+
+POST /rob/webhook/test
+
+POST /rob/webhook/village-alert
+```
+
+Role: `ADMIN_KECAMATAN`
+
+Audit log wajib untuk `POST /rob/webhook/village-alert` (action: `SEND_VILLAGE_ALERT`).
 
 ---
 

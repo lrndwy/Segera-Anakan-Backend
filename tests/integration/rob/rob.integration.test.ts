@@ -450,4 +450,107 @@ describe('ROB Guardian Integration', () => {
       expect(webhookLog?.eventName).toBe('ROB_WEBHOOK_TEST');
     });
   });
+
+  describe('POST /rob/webhook/village-alert', () => {
+    it('happy path — returns 200 for admin kecamatan', async () => {
+      const response = await context.app.request(`${api}/rob/webhook/village-alert`, {
+        method: 'POST',
+        headers: authHeader(tokens.adminKecamatan),
+        body: JSON.stringify({
+          villageId: '11111111-1111-4111-8111-111111111101',
+          message: 'Peringatan! Air rob naik.',
+          severityLevel: RobStatus.BAHAYA,
+        }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({
+        success: true,
+        message: 'Alert sent to village successfully',
+      });
+    });
+
+    it('not found — returns 404 for unknown village', async () => {
+      const response = await context.app.request(`${api}/rob/webhook/village-alert`, {
+        method: 'POST',
+        headers: authHeader(tokens.adminKecamatan),
+        body: JSON.stringify({
+          villageId: '00000000-0000-4000-8000-000000000099',
+          message: 'Peringatan!',
+          severityLevel: RobStatus.WASPADA,
+        }),
+      });
+      const body = await response.json();
+
+      expect(response.status).toBe(404);
+      assertErrorEnvelope(body as Record<string, unknown>);
+    });
+
+    it('webhook failure — still logs webhook and audit entry', async () => {
+      vi.spyOn(context.settingsService, 'get').mockImplementation(async (key: string) => {
+        if (key === 'WHATSAPP_WEBHOOK_URL') {
+          return 'http://localhost:9999/webhook';
+        }
+
+        return null;
+      });
+      vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Webhook unreachable'));
+
+      const beforeCount = await countAuditLogsByAction(context.db, 'SEND_VILLAGE_ALERT');
+
+      const response = await context.app.request(`${api}/rob/webhook/village-alert`, {
+        method: 'POST',
+        headers: authHeader(tokens.adminKecamatan),
+        body: JSON.stringify({
+          villageId: '11111111-1111-4111-8111-111111111101',
+          message: 'Webhook failure test',
+          severityLevel: RobStatus.BAHAYA,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+
+      const webhookLog = await getLatestWebhookLog(context.db);
+      expect(webhookLog?.eventName).toBe('ROB_VILLAGE_ALERT');
+      expect(webhookLog?.responseStatus).toBeNull();
+      expect(webhookLog?.responseBody).toContain('Webhook unreachable');
+
+      const auditLog = await getLatestAuditLog(context.db, 'SEND_VILLAGE_ALERT');
+      expect(auditLog).not.toBeNull();
+      expect(auditLog?.module).toBe('ROB_GUARDIAN');
+      expect(await countAuditLogsByAction(context.db, 'SEND_VILLAGE_ALERT')).toBe(beforeCount + 1);
+    });
+
+    it('audit log — creates SEND_VILLAGE_ALERT entry', async () => {
+      const beforeCount = await countAuditLogsByAction(context.db, 'SEND_VILLAGE_ALERT');
+
+      const response = await context.app.request(`${api}/rob/webhook/village-alert`, {
+        method: 'POST',
+        headers: authHeader(tokens.adminKecamatan),
+        body: JSON.stringify({
+          villageId: '11111111-1111-4111-8111-111111111102',
+          message: 'Audit log verification',
+          severityLevel: RobStatus.WASPADA,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(await countAuditLogsByAction(context.db, 'SEND_VILLAGE_ALERT')).toBe(beforeCount + 1);
+    });
+
+    it('forbidden — returns 403 for admin desa', async () => {
+      const response = await context.app.request(`${api}/rob/webhook/village-alert`, {
+        method: 'POST',
+        headers: authHeader(tokens.adminDesaUjunggagak),
+        body: JSON.stringify({
+          villageId: '11111111-1111-4111-8111-111111111101',
+          message: 'Should be denied',
+          severityLevel: RobStatus.AMAN,
+        }),
+      });
+
+      expect(response.status).toBe(403);
+    });
+  });
 });

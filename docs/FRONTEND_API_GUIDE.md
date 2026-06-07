@@ -204,19 +204,21 @@ Contoh: `GET /api/v1/users?page=2&limit=20`
 
 ## 5. Ringkasan Endpoint
 
-Total: **89 endpoint HTTP** (85 modul + 4 infrastruktur)
+Total: **93 endpoint HTTP** (89 modul + 4 infrastruktur)
 
 | Modul | Prefix | Jumlah | Public |
 |-------|--------|--------|--------|
 | Infrastruktur | `/health`, `/ready`, `/docs` | 4 | 4 |
 | Auth | `/api/v1/auth` | 4 | 2 |
+| Dashboard | `/api/v1/dashboard` | 1 | 0 |
+| Reports | `/api/v1/reports` | 1 | 0 |
 | Users | `/api/v1/users` | 6 | 0 |
 | Files | `/api/v1/files` | 3 | 0 |
 | Villages | `/api/v1/villages` | 4 | 0 |
-| ROB Guardian | `/api/v1/rob-status`, `/rob-histories`, `/rob` | 4 | 2 |
+| ROB Guardian | `/api/v1/rob-status`, `/rob-histories`, `/rob` | 5 | 2 |
 | Banyu Mili | `/api/v1/water-*` | 12 | 2 |
 | Tourism | `/api/v1/destinations`, `/boat-owners`, `/bookings`, `/booking-payments` | 14 | 5 |
-| Economy | `/api/v1/fishermen`, `/commodity-*`, `/manifests` | 22 | 4 |
+| Economy | `/api/v1/commodities`, `/fishermen`, `/commodity-*`, `/manifests` | 23 | 5 |
 | Agency | `/api/v1/agencies` | 7 | 0 |
 | Settings | `/api/v1/settings` | 5 | 0 |
 | Audit Log | `/api/v1/audit-logs` | 4 | 0 |
@@ -1644,7 +1646,110 @@ Detail audit log.
 
 ---
 
-## 18. Alur Bisnis Frontend
+## 18. Dashboard
+
+Base path: `/api/v1/dashboard`
+
+### `GET /api/v1/dashboard/stats` 🔒 AD+
+
+Statistik utama dashboard.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "message": "Dashboard stats retrieved",
+  "data": {
+    "totalRevenue": 15000000,
+    "activeBookings": 24,
+    "totalFishermen": 150,
+    "totalCommodities": 45,
+    "revenueGrowth": 12.5,
+    "bookingGrowth": 5.2
+  }
+}
+```
+
+**Ownership:** `ADMIN_DESA` hanya data desa sendiri; `ADMIN_KECAMATAN` semua desa.
+
+---
+
+## 19. Reports
+
+Base path: `/api/v1/reports`
+
+### `GET /api/v1/reports` 🔒 AD+
+
+Laporan revenue dan pengunjung per periode.
+
+**Query (wajib):**
+
+| Param | Tipe | Keterangan |
+|-------|------|------------|
+| `start_date` | string | `YYYY-MM-DD` |
+| `end_date` | string | `YYYY-MM-DD` |
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "message": "Reports retrieved",
+  "data": {
+    "chartData": [
+      { "date": "2026-06-01", "revenue": 500000, "visitors": 10 }
+    ],
+    "summary": {
+      "averageDailyRevenue": 550000,
+      "totalPeriodRevenue": 1650000
+    }
+  }
+}
+```
+
+**Ownership:** `ADMIN_DESA` hanya data desa sendiri.
+
+---
+
+## 20. ROB Village Alert (tambahan)
+
+### `POST /api/v1/rob/webhook/village-alert` 🔒 AK
+
+Kirim peringatan rob ke desa tertentu via webhook.
+
+**Request Body:**
+
+| Field | Tipe | Wajib |
+|-------|------|-------|
+| `villageId` | uuid | ✅ |
+| `message` | string | ✅ |
+| `severityLevel` | enum | ✅ `AMAN`, `WASPADA`, `BAHAYA` |
+
+**Response 200:** `{ "success": true, "message": "Alert sent to village successfully" }`
+
+---
+
+## 21. Commodity Catalog (tambahan)
+
+### `GET /api/v1/commodities` 🌐
+
+Katalog komoditas master (public).
+
+**Query:** `search` (opsional)
+
+**Response 200 — item:**
+```json
+{
+  "id": "uuid",
+  "name": "Ikan Bandeng",
+  "categoryName": "Ikan"
+}
+```
+
+Diurutkan: `categoryName ASC`, `name ASC`.
+
+---
+
+## 22. Alur Bisnis Frontend
 
 ### Alur Autentikasi
 
@@ -1722,7 +1827,7 @@ Endpoint yang bisa dipanggil tanpa login untuk halaman publik:
 
 ---
 
-## 19. Referensi Enum
+## 23. Referensi Enum
 
 ### User
 

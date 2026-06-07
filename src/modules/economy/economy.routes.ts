@@ -8,6 +8,12 @@ import { roleMiddleware } from '../../middlewares/role.middleware';
 import { createOpenAPIRouter } from '../../lib/openapi-router';
 import type { AppEnv } from '../../types/app-env';
 import { getRequestIp } from '../../utils/network';
+import {
+  commodityCatalogItemSchema,
+  listCommoditiesQuerySchema,
+  successEnvelopeSchema as commoditySuccessEnvelopeSchema,
+} from './commodity.schema';
+import type { CommodityService } from './commodity.service';
 import type { CommodityInventoryService } from './commodity-inventory.service';
 import type { CommodityOrderService } from './commodity-order.service';
 import type { CommodityPaymentService } from './commodity-payment.service';
@@ -512,6 +518,39 @@ export const createManifestsRouter = ({ manifestService, authMiddleware }: Pick<
     const { currentUser, meta } = getActorMeta(context);
     await manifestService.complete(id, currentUser, meta);
     return context.json({ success: true, message: 'Manifest completed successfully' }, 200);
+  });
+
+  return router;
+};
+
+export const createCommoditiesRouter = (commodityService: CommodityService) => {
+  const router = createOpenAPIRouter();
+
+  const listCommoditiesRoute = createRoute({
+    method: 'get',
+    path: '/',
+    tags: ['Economy'],
+    summary: 'List commodity catalog (public)',
+    security: [],
+    request: {
+      query: listCommoditiesQuerySchema,
+    },
+    responses: {
+      200: {
+        description: 'Commodities retrieved',
+        content: {
+          'application/json': {
+            schema: commoditySuccessEnvelopeSchema(z.array(commodityCatalogItemSchema)),
+          },
+        },
+      },
+    },
+  });
+
+  router.openapi(listCommoditiesRoute, async (context) => {
+    const query = context.req.valid('query');
+    const items = await commodityService.findAllPublic(query);
+    return context.json(successResponse('Commodities retrieved', items), 200);
   });
 
   return router;

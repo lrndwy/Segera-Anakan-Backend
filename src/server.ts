@@ -15,7 +15,10 @@ import { WaterReportService } from './modules/banyu-mili/water-report.service';
 import { BoatOwnerService } from './modules/tourism/boat-owner.service';
 import { BookingService } from './modules/tourism/booking.service';
 import { DestinationService } from './modules/tourism/destination.service';
+import { CommodityService } from './modules/economy/commodity.service';
+import { DashboardService } from './modules/dashboard/dashboard.service';
 import { FishermanService } from './modules/economy/fisherman.service';
+import { ReportsService } from './modules/reports/reports.service';
 import { CommodityInventoryService } from './modules/economy/commodity-inventory.service';
 import { CommodityOrderService } from './modules/economy/commodity-order.service';
 import { CommodityPaymentService } from './modules/economy/commodity-payment.service';
@@ -47,6 +50,9 @@ const bootstrap = async () => {
   const destinationService = new DestinationService(db, auditLogService);
   const boatOwnerService = new BoatOwnerService(db, auditLogService);
   const bookingService = new BookingService(db, auditLogService);
+  const dashboardService = new DashboardService(db);
+  const reportsService = new ReportsService(db);
+  const commodityService = new CommodityService(db);
   const fishermanService = new FishermanService(db, auditLogService);
   const commodityInventoryService = new CommodityInventoryService(db, auditLogService);
   const commodityOrderService = new CommodityOrderService(db, auditLogService);
@@ -82,6 +88,9 @@ const bootstrap = async () => {
     auditLogQueryService,
     auditLogService,
     minioService,
+    dashboardService,
+    reportsService,
+    commodityService,
   });
 
   const server = serve({ fetch: app.fetch, port: env.PORT });

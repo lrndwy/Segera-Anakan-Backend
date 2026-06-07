@@ -48,13 +48,19 @@ import {
 import type { BoatOwnerService } from './modules/tourism/boat-owner.service';
 import type { BookingService } from './modules/tourism/booking.service';
 import type { DestinationService } from './modules/tourism/destination.service';
+import { createDashboardRouter } from './modules/dashboard/dashboard.routes';
+import type { DashboardService } from './modules/dashboard/dashboard.service';
 import {
+  createCommoditiesRouter,
   createCommodityInventoryRouter,
   createCommodityOrdersRouter,
   createCommodityPaymentsRouter,
   createFishermenRouter,
   createManifestsRouter,
 } from './modules/economy/economy.routes';
+import type { CommodityService } from './modules/economy/commodity.service';
+import { createReportsRouter } from './modules/reports/reports.routes';
+import type { ReportsService } from './modules/reports/reports.service';
 import type { CommodityInventoryService } from './modules/economy/commodity-inventory.service';
 import type { CommodityOrderService } from './modules/economy/commodity-order.service';
 import type { CommodityPaymentService } from './modules/economy/commodity-payment.service';
@@ -95,9 +101,12 @@ type CreateAppDeps = {
   auditLogQueryService: AuditLogQueryService;
   auditLogService: AuditLogService;
   minioService: MinioService;
+  dashboardService: DashboardService;
+  reportsService: ReportsService;
+  commodityService: CommodityService;
 };
 
-export const createApp = ({ logger, db, redis, authService, userManagementService, fileService, villageService, robGuardianService, waterAssetService, waterReportService, waterAlertService, destinationService, boatOwnerService, bookingService, fishermanService, commodityInventoryService, commodityOrderService, commodityPaymentService, manifestService, agencyService, settingsService, auditLogQueryService, auditLogService: _auditLogService, minioService: _minioService }: CreateAppDeps) => {
+export const createApp = ({ logger, db, redis, authService, userManagementService, fileService, villageService, robGuardianService, waterAssetService, waterReportService, waterAlertService, destinationService, boatOwnerService, bookingService, fishermanService, commodityInventoryService, commodityOrderService, commodityPaymentService, manifestService, agencyService, settingsService, auditLogQueryService, auditLogService: _auditLogService, minioService: _minioService, dashboardService, reportsService, commodityService }: CreateAppDeps) => {
   const app = createOpenAPIRouter();
   const authMiddleware = createAuthMiddleware({ db });
 
@@ -157,6 +166,9 @@ export const createApp = ({ logger, db, redis, authService, userManagementServic
   app.route(`${env.API_PREFIX}/agencies`, createAgenciesRouter({ agencyService, authMiddleware }));
   app.route(`${env.API_PREFIX}/settings`, createSettingsRouter({ settingsService, authMiddleware }));
   app.route(`${env.API_PREFIX}/audit-logs`, createAuditLogRouter({ auditLogQueryService, authMiddleware }));
+  app.route(`${env.API_PREFIX}/dashboard`, createDashboardRouter({ dashboardService, authMiddleware }));
+  app.route(`${env.API_PREFIX}/reports`, createReportsRouter({ reportsService, authMiddleware }));
+  app.route(`${env.API_PREFIX}/commodities`, createCommoditiesRouter(commodityService));
 
   app.openAPIRegistry.registerComponent('securitySchemes', 'bearerAuth', {
     type: 'http',

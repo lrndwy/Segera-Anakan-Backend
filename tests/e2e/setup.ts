@@ -22,5 +22,11 @@ if (!testDatabaseUrl) {
   throw new Error('E2E tests require TEST_DATABASE_URL or DATABASE_URL to derive a dedicated *_test database.');
 }
 
+const redisPort = process.env.REDIS_PORT ?? '6380';
+const minioPort = process.env.MINIO_API_PORT ?? '9100';
+
+process.env.NODE_ENV = 'test';
+process.env.REDIS_URL = process.env.TEST_REDIS_URL ?? `redis://localhost:${redisPort}`;
+process.env.STORAGE_ENDPOINT = process.env.TEST_STORAGE_ENDPOINT ?? `http://localhost:${minioPort}`;
 process.env.DATABASE_URL = testDatabaseUrl;
 process.env.TEST_DATABASE_URL = testDatabaseUrl;

@@ -2,7 +2,7 @@
 
 # SegaraAnakan Hub
 
-Version: 3.3
+Version: 3.4
 
 Database: PostgreSQL
 
@@ -956,4 +956,45 @@ files
 ├── destination_images
 ├── booking_payments
 └── commodity_payments
+
+commodity_categories
+└── commodities
 ```
+
+---
+
+# API DATA SOURCES (Read-Only Aggregations)
+
+Endpoint berikut tidak memiliki tabel baru. Data diambil dari tabel existing.
+
+## GET /dashboard/stats
+
+| Field | Source |
+|-------|--------|
+| totalRevenue | `bookings.total_amount` + `commodity_orders.total_amount` (status `CONFIRMED`, `COMPLETED`) |
+| activeBookings | `bookings` (status `CONFIRMED`) |
+| totalFishermen | `fishermen` (active, not soft-deleted) |
+| totalCommodities | `commodities` |
+| revenueGrowth | revenue bulan ini vs bulan sebelumnya |
+| bookingGrowth | jumlah booking bulan ini vs bulan sebelumnya |
+
+Ownership: filter `village_id` untuk `ADMIN_DESA`.
+
+## GET /reports
+
+| Field | Source |
+|-------|--------|
+| chartData.revenue | `bookings` + `commodity_orders` per hari |
+| chartData.visitors | `bookings.total_people` per hari |
+| summary | agregasi periode `start_date`–`end_date` |
+
+## GET /commodities
+
+| Field | Source |
+|-------|--------|
+| id, name | `commodities` |
+| categoryName | `commodity_categories.name` |
+
+## POST /rob/webhook/village-alert
+
+Menulis ke `rob_webhook_logs` dan `audit_logs`. Payload webhook event: `ROB_VILLAGE_ALERT`.

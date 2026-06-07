@@ -17,7 +17,10 @@ import { WaterReportService } from '../../src/modules/banyu-mili/water-report.se
 import { BoatOwnerService } from '../../src/modules/tourism/boat-owner.service';
 import { BookingService } from '../../src/modules/tourism/booking.service';
 import { DestinationService } from '../../src/modules/tourism/destination.service';
+import { CommodityService } from '../../src/modules/economy/commodity.service';
+import { DashboardService } from '../../src/modules/dashboard/dashboard.service';
 import { FishermanService } from '../../src/modules/economy/fisherman.service';
+import { ReportsService } from '../../src/modules/reports/reports.service';
 import { CommodityInventoryService } from '../../src/modules/economy/commodity-inventory.service';
 import { CommodityOrderService } from '../../src/modules/economy/commodity-order.service';
 import { CommodityPaymentService } from '../../src/modules/economy/commodity-payment.service';
@@ -62,6 +65,9 @@ export const createTestApp = async (): Promise<TestAppContext> => {
   const destinationService = new DestinationService(db, auditLogService);
   const boatOwnerService = new BoatOwnerService(db, auditLogService);
   const bookingService = new BookingService(db, auditLogService);
+  const dashboardService = new DashboardService(db);
+  const reportsService = new ReportsService(db);
+  const commodityService = new CommodityService(db);
   const fishermanService = new FishermanService(db, auditLogService);
   const commodityInventoryService = new CommodityInventoryService(db, auditLogService);
   const commodityOrderService = new CommodityOrderService(db, auditLogService);
@@ -97,6 +103,9 @@ export const createTestApp = async (): Promise<TestAppContext> => {
     auditLogQueryService,
     auditLogService,
     minioService,
+    dashboardService,
+    reportsService,
+    commodityService,
   });
 
   return {
