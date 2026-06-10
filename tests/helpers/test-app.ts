@@ -21,6 +21,8 @@ import { CommodityService } from '../../src/modules/economy/commodity.service';
 import { DashboardService } from '../../src/modules/dashboard/dashboard.service';
 import { FishermanService } from '../../src/modules/economy/fisherman.service';
 import { ReportsService } from '../../src/modules/reports/reports.service';
+import { WeatherService } from '../../src/modules/weather/weather.service';
+import { VillageRepository } from '../../src/modules/village/village.repository';
 import { CommodityInventoryService } from '../../src/modules/economy/commodity-inventory.service';
 import { CommodityOrderService } from '../../src/modules/economy/commodity-order.service';
 import { CommodityPaymentService } from '../../src/modules/economy/commodity-payment.service';
@@ -67,6 +69,7 @@ export const createTestApp = async (): Promise<TestAppContext> => {
   const bookingService = new BookingService(db, auditLogService);
   const dashboardService = new DashboardService(db);
   const reportsService = new ReportsService(db);
+  const weatherService = new WeatherService(settingsService, new VillageRepository(db));
   const commodityService = new CommodityService(db);
   const fishermanService = new FishermanService(db, auditLogService);
   const commodityInventoryService = new CommodityInventoryService(db, auditLogService);
@@ -106,6 +109,7 @@ export const createTestApp = async (): Promise<TestAppContext> => {
     dashboardService,
     reportsService,
     commodityService,
+    weatherService,
   });
 
   return {

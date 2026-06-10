@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "segara-anakan-hub-api",
     "name": "SegaraAnakan Hub API",
-    "description": "Koleksi lengkap endpoint backend SegaraAnakan Hub (93 endpoint).\n\nSetup:\n1. Set variabel baseUrl (default: http://localhost:3100 — port host Docker)\n2. Jalankan Login di folder Auth\n3. Endpoint public tidak memerlukan token\n\nRole:\n- ADMIN_KECAMATAN: akses penuh\n- ADMIN_DESA: village-scoped\n- KADER_DESA: monitoring air",
+    "description": "Koleksi lengkap endpoint backend SegaraAnakan Hub (95 endpoint).\n\nSetup:\n1. Set variabel baseUrl (default: http://localhost:3100 — port host Docker)\n2. Jalankan Login di folder Auth\n3. Endpoint public tidak memerlukan token\n\nRole:\n- ADMIN_KECAMATAN: akses penuh\n- ADMIN_DESA: village-scoped\n- KADER_DESA: monitoring air",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -863,6 +863,34 @@
       ]
     },
     {
+      "name": "Weather",
+      "description": "Prakiraan cuaca publik (sumber data BMKG)",
+      "item": [
+        {
+          "name": "Get 7-Day Forecast",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/weather/forecast",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{apiPrefix}}",
+                "weather",
+                "forecast"
+              ]
+            },
+            "description": "Public — prakiraan cuaca 7 hari.\n\nResponse item: date, type, temp, hum, wind, hourly[] (time, type, temp).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Rob Guardian",
       "description": "",
       "item": [
@@ -886,6 +914,28 @@
                   ]
                 },
                 "description": "",
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            },
+            {
+              "name": "Get Rob Status Per Village",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/rob-status/villages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "{{apiPrefix}}",
+                    "rob-status",
+                    "villages"
+                  ]
+                },
+                "description": "Public — status agregat rob + daftar status per desa.\n\nResponse: status, score, waveHeight, villages[] (villageId, villageName, status, waterLevel).",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2089,7 +2139,7 @@
                     }
                   ]
                 },
-                "description": "",
+                "description": "Public — daftar inventori komoditas.\n\nResponse item mencakup fileId dan imageUrl untuk gambar produk.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2111,7 +2161,7 @@
                     "{{inventoryId}}"
                   ]
                 },
-                "description": "",
+                "description": "Public — detail inventori komoditas.\n\nResponse mencakup fileId dan imageUrl untuk gambar produk.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2400,7 +2450,7 @@
                     "commodity-inventory"
                   ]
                 },
-                "description": "",
+                "description": "ADMIN_DESA / ADMIN_KECAMATAN — buat inventori komoditas.\n\nAlur gambar:\n1. Upload gambar via POST /files/upload\n2. Kirim fileId hasil upload pada request body (opsional).",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2413,7 +2463,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"fishermanId\": \"{{fishermanId}}\",\n  \"commodityId\": \"{{commodityId}}\",\n  \"availableWeightKg\": 100,\n  \"pricePerKg\": 25000\n}",
+                  "raw": "{\n  \"fishermanId\": \"{{fishermanId}}\",\n  \"commodityId\": \"{{commodityId}}\",\n  \"availableWeightKg\": 100,\n  \"pricePerKg\": 25000,\n  \"fileId\": \"{{fileId}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2443,7 +2493,7 @@
                     "{{inventoryId}}"
                   ]
                 },
-                "description": "",
+                "description": "ADMIN_DESA / ADMIN_KECAMATAN — perbarui inventori.\n\nfileId opsional:\n- dikirim UUID → gambar diperbarui\n- tidak dikirim → gambar lama tetap\n- null → gambar dihapus",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2456,7 +2506,50 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"pricePerKg\": 30000\n}",
+                  "raw": "{\n  \"pricePerKg\": 30000,\n  \"fileId\": \"{{fileId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Remove Inventory Image",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/commodity-inventory/{{inventoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "{{apiPrefix}}",
+                    "commodity-inventory",
+                    "{{inventoryId}}"
+                  ]
+                },
+                "description": "ADMIN_DESA / ADMIN_KECAMATAN — hapus gambar komoditas dengan mengirim fileId: null.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fileId\": null\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2917,7 +3010,7 @@
     },
     {
       "name": "Reports",
-      "description": "ADMIN_KECAMATAN & ADMIN_DESA — laporan revenue dan pengunjung",
+      "description": "ADMIN_KECAMATAN & ADMIN_DESA — laporan revenue, pengunjung, dan konfirmasi booking",
       "item": [
         {
           "name": "Get Reports",
@@ -2946,7 +3039,7 @@
                 }
               ]
             },
-            "description": "ADMIN_DESA: data desa sendiri. ADMIN_KECAMATAN: semua desa.",
+            "description": "ADMIN_DESA: data desa sendiri. ADMIN_KECAMATAN: semua desa.\n\nchartData[]: date, revenue, visitors, confirmed (jumlah totalPeople booking berstatus CONFIRMED per hari).",
             "auth": {
               "type": "bearer",
               "bearer": [

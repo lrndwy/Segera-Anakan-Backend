@@ -5,6 +5,7 @@ import {
   commodities,
   commodityInventory,
   commodityStockMovements,
+  files,
   fishermen,
   villages,
   type CommodityInventoryRow,
@@ -37,11 +38,13 @@ export class CommodityInventoryRepository {
         commodityName: commodities.name,
         villageId: fishermen.villageId,
         villageName: villages.name,
+        imageUrl: files.url,
       })
       .from(commodityInventory)
       .innerJoin(fishermen, eq(commodityInventory.fishermanId, fishermen.id))
       .innerJoin(commodities, eq(commodityInventory.commodityId, commodities.id))
       .innerJoin(villages, eq(fishermen.villageId, villages.id))
+      .leftJoin(files, eq(commodityInventory.fileId, files.id))
       .where(eq(commodityInventory.id, inventoryId))
       .limit(1);
     return rows[0] ?? null;
@@ -71,11 +74,13 @@ export class CommodityInventoryRepository {
         commodityName: commodities.name,
         villageId: fishermen.villageId,
         villageName: villages.name,
+        imageUrl: files.url,
       })
       .from(commodityInventory)
       .innerJoin(fishermen, eq(commodityInventory.fishermanId, fishermen.id))
       .innerJoin(commodities, eq(commodityInventory.commodityId, commodities.id))
       .innerJoin(villages, eq(fishermen.villageId, villages.id))
+      .leftJoin(files, eq(commodityInventory.fileId, files.id))
       .where(whereClause)
       .orderBy(desc(commodityInventory.updatedAt))
       .limit(input.limit)

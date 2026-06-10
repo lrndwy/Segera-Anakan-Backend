@@ -51,6 +51,7 @@ export class ReportsService {
         date,
         revenue: metrics?.revenue ?? 0,
         visitors: metrics?.visitors ?? 0,
+        confirmed: metrics?.confirmed ?? 0,
       };
     });
 

@@ -9,6 +9,7 @@ export const reportChartItemSchema = z.object({
   date: z.string(),
   revenue: z.number(),
   visitors: z.number(),
+  confirmed: z.number(),
 });
 
 export const reportSummarySchema = z.object({

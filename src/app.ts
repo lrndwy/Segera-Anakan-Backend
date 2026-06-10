@@ -61,6 +61,8 @@ import {
 import type { CommodityService } from './modules/economy/commodity.service';
 import { createReportsRouter } from './modules/reports/reports.routes';
 import type { ReportsService } from './modules/reports/reports.service';
+import { createWeatherRouter } from './modules/weather/weather.routes';
+import type { WeatherService } from './modules/weather/weather.service';
 import type { CommodityInventoryService } from './modules/economy/commodity-inventory.service';
 import type { CommodityOrderService } from './modules/economy/commodity-order.service';
 import type { CommodityPaymentService } from './modules/economy/commodity-payment.service';
@@ -104,9 +106,10 @@ type CreateAppDeps = {
   dashboardService: DashboardService;
   reportsService: ReportsService;
   commodityService: CommodityService;
+  weatherService: WeatherService;
 };
 
-export const createApp = ({ logger, db, redis, authService, userManagementService, fileService, villageService, robGuardianService, waterAssetService, waterReportService, waterAlertService, destinationService, boatOwnerService, bookingService, fishermanService, commodityInventoryService, commodityOrderService, commodityPaymentService, manifestService, agencyService, settingsService, auditLogQueryService, auditLogService: _auditLogService, minioService: _minioService, dashboardService, reportsService, commodityService }: CreateAppDeps) => {
+export const createApp = ({ logger, db, redis, authService, userManagementService, fileService, villageService, robGuardianService, waterAssetService, waterReportService, waterAlertService, destinationService, boatOwnerService, bookingService, fishermanService, commodityInventoryService, commodityOrderService, commodityPaymentService, manifestService, agencyService, settingsService, auditLogQueryService, auditLogService: _auditLogService, minioService: _minioService, dashboardService, reportsService, commodityService, weatherService }: CreateAppDeps) => {
   const app = createOpenAPIRouter();
   const authMiddleware = createAuthMiddleware({ db });
 
@@ -147,6 +150,7 @@ export const createApp = ({ logger, db, redis, authService, userManagementServic
   app.route(`${env.API_PREFIX}/users`, createUserRouter({ userManagementService, authMiddleware }));
   app.route(`${env.API_PREFIX}/files`, createFileRouter({ fileService, authMiddleware }));
   app.route(`${env.API_PREFIX}/villages`, createVillageRouter({ villageService, authMiddleware }));
+  app.route(`${env.API_PREFIX}/weather`, createWeatherRouter(weatherService));
   app.route(`${env.API_PREFIX}/rob-status`, createPublicRobRouter(robGuardianService));
   app.route(`${env.API_PREFIX}/rob-histories`, createPublicRobHistoriesRouter(robGuardianService));
   app.route(`${env.API_PREFIX}/rob`, createAdminRobRouter({ robGuardianService, authMiddleware }));

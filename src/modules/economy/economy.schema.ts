@@ -47,11 +47,13 @@ export const createCommodityInventorySchema = z.object({
   commodityId: z.string().uuid(),
   availableWeightKg: z.number().positive(),
   pricePerKg: z.number().positive(),
+  fileId: z.string().uuid().optional(),
 });
 
 export const updateCommodityInventorySchema = z.object({
   availableWeightKg: z.number().positive().optional(),
   pricePerKg: z.number().positive().optional(),
+  fileId: z.string().uuid().nullable().optional(),
 });
 
 export const adjustCommodityStockSchema = z.object({
@@ -110,6 +112,8 @@ export const commodityInventoryListItemSchema = z.object({
   villageName: z.string(),
   availableWeightKg: z.number(),
   pricePerKg: z.number(),
+  fileId: z.string().uuid().nullable(),
+  imageUrl: z.string().nullable(),
 });
 
 export const stockMovementResponseSchema = z.object({

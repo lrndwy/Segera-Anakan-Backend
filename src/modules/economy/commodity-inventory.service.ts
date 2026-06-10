@@ -6,6 +6,8 @@ import { ForbiddenException, NotFoundException, ValidationException } from '../.
 import { buildPaginationMeta, normalizePagination } from '../../lib/pagination';
 import { runTransaction } from '../../lib/transaction';
 import { assertVillageAccess } from '../../policies/village-access.policy';
+import { ALLOWED_IMAGE_MIME_TYPES } from '../file/file.constants';
+import { FileRepository } from '../file/file.repository';
 import type { AuditLogService } from '../../services/audit-log.service';
 import type { CurrentUser } from '../../types/current-user';
 import { CommodityRepository } from './commodity.repository';
@@ -21,11 +23,19 @@ import type { CommodityInventoryDetailResponse, CommodityInventoryListItemRespon
 import { toNumber } from './economy.utils';
 
 const toListItem = (row: {
-  inventory: { id: string; fishermanId: string; commodityId: string; availableWeightKg: string | number; pricePerKg: string | number };
+  inventory: {
+    id: string;
+    fishermanId: string;
+    commodityId: string;
+    availableWeightKg: string | number;
+    pricePerKg: string | number;
+    fileId: string | null;
+  };
   fishermanName: string;
   commodityName: string;
   villageId: string;
   villageName: string;
+  imageUrl: string | null;
 }): CommodityInventoryListItemResponse => ({
   id: row.inventory.id,
   fishermanId: row.inventory.fishermanId,
@@ -36,12 +46,15 @@ const toListItem = (row: {
   villageName: row.villageName,
   availableWeightKg: toNumber(row.inventory.availableWeightKg),
   pricePerKg: toNumber(row.inventory.pricePerKg),
+  fileId: row.inventory.fileId,
+  imageUrl: row.imageUrl,
 });
 
 export class CommodityInventoryService {
   private readonly inventoryRepository: CommodityInventoryRepository;
   private readonly fishermanRepository: FishermanRepository;
   private readonly commodityRepository: CommodityRepository;
+  private readonly fileRepository: FileRepository;
 
   constructor(
     private readonly db: Database,
@@ -50,6 +63,32 @@ export class CommodityInventoryService {
     this.inventoryRepository = new CommodityInventoryRepository(db);
     this.fishermanRepository = new FishermanRepository(db);
     this.commodityRepository = new CommodityRepository(db);
+    this.fileRepository = new FileRepository(db);
+  }
+
+  private async resolveImageFileId(
+    fileId: string | null | undefined,
+    field = 'fileId',
+  ): Promise<string | null | undefined> {
+    if (fileId === undefined) {
+      return undefined;
+    }
+
+    if (fileId === null) {
+      return null;
+    }
+
+    const file = await this.fileRepository.findById(fileId);
+
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.mimeType as (typeof ALLOWED_IMAGE_MIME_TYPES)[number])) {
+      throw new ValidationException('Validation failed', [{ field, message: 'File must be an image' }]);
+    }
+
+    return fileId;
   }
 
   private resolveVillageScope(currentUser: CurrentUser): string | undefined {
@@ -141,6 +180,8 @@ export class CommodityInventoryService {
     const commodity = await this.commodityRepository.findCommodityById(input.commodityId);
     if (!commodity) throw new NotFoundException('Commodity not found');
 
+    const resolvedFileId = await this.resolveImageFileId(input.fileId);
+
     const inventory = await runTransaction(this.db, async (tx) => {
       const inventoryRepo = new CommodityInventoryRepository(tx);
 
@@ -150,6 +191,7 @@ export class CommodityInventoryService {
         commodityId: input.commodityId,
         availableWeightKg: input.availableWeightKg.toString(),
         pricePerKg: input.pricePerKg.toString(),
+        ...(resolvedFileId !== undefined ? { fileId: resolvedFileId } : {}),
         createdBy: currentUser.id,
       });
 
@@ -175,7 +217,11 @@ export class CommodityInventoryService {
       entityType: 'commodity_inventory',
       entityId: inventory.id,
       ipAddress: meta.ipAddress,
-      newData: { availableWeightKg: input.availableWeightKg, pricePerKg: input.pricePerKg },
+      newData: {
+        availableWeightKg: input.availableWeightKg,
+        pricePerKg: input.pricePerKg,
+        ...(resolvedFileId !== undefined ? { fileId: resolvedFileId } : {}),
+      },
     });
 
     const detail = await this.inventoryRepository.findByIdWithDetails(inventory.id);
@@ -189,9 +235,12 @@ export class CommodityInventoryService {
     assertVillageAccess(currentUser, record.villageId);
     if (currentUser.role === UserRole.KADER_DESA) throw new ForbiddenException();
 
+    const resolvedFileId = await this.resolveImageFileId(input.fileId);
+
     const updated = await this.inventoryRepository.update(inventoryId, {
       ...(input.availableWeightKg !== undefined ? { availableWeightKg: input.availableWeightKg.toString() } : {}),
       ...(input.pricePerKg !== undefined ? { pricePerKg: input.pricePerKg.toString() } : {}),
+      ...(resolvedFileId !== undefined ? { fileId: resolvedFileId } : {}),
       updatedBy: currentUser.id,
     });
 

@@ -18,6 +18,7 @@ import {
   paginatedEnvelopeSchema,
   robHistoryItemResponseSchema,
   robStatusResponseSchema,
+  robVillagesStatusResponseSchema,
   successEnvelopeSchema,
 } from './rob.schema';
 
@@ -51,6 +52,30 @@ export const createPublicRobRouter = (robGuardianService: RobGuardianService) =>
   router.openapi(getRobStatusRoute, async (context) => {
     const status = await robGuardianService.getCurrentStatus();
     return context.json(successResponse('Current rob status retrieved', status), 200);
+  });
+
+  const getRobVillageStatusRoute = createRoute({
+    method: 'get',
+    path: '/villages',
+    tags: ['Rob Guardian'],
+    summary: 'Get rob status per village',
+    security: [],
+    responses: {
+      200: {
+        description: 'Rob status per village retrieved',
+        content: {
+          'application/json': {
+            schema: successEnvelopeSchema(robVillagesStatusResponseSchema),
+          },
+        },
+      },
+      404: { description: 'Not found', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+    },
+  });
+
+  router.openapi(getRobVillageStatusRoute, async (context) => {
+    const status = await robGuardianService.getVillageStatuses();
+    return context.json(successResponse('Rob status per village retrieved', status), 200);
   });
 
   return router;

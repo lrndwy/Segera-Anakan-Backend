@@ -2,6 +2,7 @@ export type ReportChartItem = {
   date: string;
   revenue: number;
   visitors: number;
+  confirmed: number;
 };
 
 export type ReportSummary = {

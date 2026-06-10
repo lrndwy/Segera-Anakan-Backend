@@ -61,20 +61,28 @@ export const resetEconomyTestData = async (db: Database): Promise<void> => {
   await db.delete(files).where(eq(files.bucket, ECONOMY_TEST_FILE_BUCKET));
 };
 
-export const createTestPaymentFile = async (db: Database): Promise<string> => {
+const createTestImageFile = async (db: Database, objectPrefix: string, originalName: string): Promise<string> => {
   const id = generateUuid();
 
   await db.insert(files).values({
     id,
     bucket: ECONOMY_TEST_FILE_BUCKET,
-    objectName: `payments/${id}.jpg`,
-    originalName: 'payment-proof.jpg',
+    objectName: `${objectPrefix}/${id}.jpg`,
+    originalName,
     mimeType: 'image/jpeg',
     size: 1024,
-    url: `http://localhost:9000/${ECONOMY_TEST_FILE_BUCKET}/payments/${id}.jpg`,
+    url: `http://localhost:9000/${ECONOMY_TEST_FILE_BUCKET}/${objectPrefix}/${id}.jpg`,
   });
 
   return id;
+};
+
+export const createTestPaymentFile = async (db: Database): Promise<string> => {
+  return createTestImageFile(db, 'payments', 'payment-proof.jpg');
+};
+
+export const createTestCommodityImageFile = async (db: Database): Promise<string> => {
+  return createTestImageFile(db, 'commodities', 'commodity-image.jpg');
 };
 
 export const getInventoryById = async (db: Database, inventoryId: string) => {

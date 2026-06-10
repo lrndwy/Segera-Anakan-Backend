@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { index, numeric, pgTable, uuid } from 'drizzle-orm/pg-core';
 
 import { commodities } from './commodities';
+import { files } from './files';
 import { fishermen } from './fishermen';
 import { timestamps } from './timestamps';
 import { users } from './users';
@@ -19,6 +20,7 @@ export const commodityInventory = pgTable(
       .references(() => commodities.id, { onDelete: 'restrict' }),
     availableWeightKg: numeric('available_weight_kg', { precision: 10, scale: 2 }).notNull(),
     pricePerKg: numeric('price_per_kg', { precision: 12, scale: 2 }).notNull(),
+    fileId: uuid('file_id').references(() => files.id, { onDelete: 'set null' }),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
@@ -28,6 +30,7 @@ export const commodityInventory = pgTable(
   (table) => ({
     fishermanIndex: index('idx_commodity_inventory_fisherman_id').on(table.fishermanId),
     commodityIndex: index('idx_commodity_inventory_commodity_id').on(table.commodityId),
+    fileIndex: index('idx_commodity_inventory_file_id').on(table.fileId),
   }),
 );
 

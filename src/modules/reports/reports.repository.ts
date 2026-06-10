@@ -16,6 +16,7 @@ export type DailyMetricRow = {
   date: string;
   revenue: number;
   visitors: number;
+  confirmed: number;
 };
 
 export class ReportsRepository {
@@ -46,6 +47,16 @@ export class ReportsRepository {
       orderConditions.push(eq(commodityOrders.villageId, villageId));
     }
 
+    const confirmedBookingConditions = [
+      eq(bookings.status, BookingStatus.CONFIRMED),
+      gte(bookings.createdAt, startDate),
+      lte(bookings.createdAt, endDate),
+    ];
+
+    if (villageId) {
+      confirmedBookingConditions.push(eq(bookings.villageId, villageId));
+    }
+
     const bookingRows = await this.db
       .select({
         date: sql<string>`to_char(${bookings.createdAt}::date, 'YYYY-MM-DD')`,
@@ -54,6 +65,15 @@ export class ReportsRepository {
       })
       .from(bookings)
       .where(and(...bookingConditions))
+      .groupBy(sql`${bookings.createdAt}::date`);
+
+    const confirmedBookingRows = await this.db
+      .select({
+        date: sql<string>`to_char(${bookings.createdAt}::date, 'YYYY-MM-DD')`,
+        confirmed: sql<string>`coalesce(sum(${bookings.totalPeople}), 0)`,
+      })
+      .from(bookings)
+      .where(and(...confirmedBookingConditions))
       .groupBy(sql`${bookings.createdAt}::date`);
 
     const orderRows = await this.db
@@ -65,21 +85,32 @@ export class ReportsRepository {
       .where(and(...orderConditions))
       .groupBy(sql`${commodityOrders.createdAt}::date`);
 
-    const byDate = new Map<string, { revenue: number; visitors: number }>();
+    const byDate = new Map<string, { revenue: number; visitors: number; confirmed: number }>();
 
     for (const row of bookingRows) {
-      const existing = byDate.get(row.date) ?? { revenue: 0, visitors: 0 };
+      const existing = byDate.get(row.date) ?? { revenue: 0, visitors: 0, confirmed: 0 };
       byDate.set(row.date, {
         revenue: existing.revenue + toNumber(row.revenue),
         visitors: existing.visitors + toNumber(row.visitors),
+        confirmed: existing.confirmed,
+      });
+    }
+
+    for (const row of confirmedBookingRows) {
+      const existing = byDate.get(row.date) ?? { revenue: 0, visitors: 0, confirmed: 0 };
+      byDate.set(row.date, {
+        revenue: existing.revenue,
+        visitors: existing.visitors,
+        confirmed: existing.confirmed + toNumber(row.confirmed),
       });
     }
 
     for (const row of orderRows) {
-      const existing = byDate.get(row.date) ?? { revenue: 0, visitors: 0 };
+      const existing = byDate.get(row.date) ?? { revenue: 0, visitors: 0, confirmed: 0 };
       byDate.set(row.date, {
         revenue: existing.revenue + toNumber(row.revenue),
         visitors: existing.visitors,
+        confirmed: existing.confirmed,
       });
     }
 
@@ -88,6 +119,7 @@ export class ReportsRepository {
         date,
         revenue: metrics.revenue,
         visitors: metrics.visitors,
+        confirmed: metrics.confirmed,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }

@@ -12,7 +12,12 @@ import { BmkgService } from './bmkg.service';
 import type { ListRobHistoriesQuery, ManualOverrideInput, VillageAlertInput } from './rob.schema';
 import { evaluateRobMetrics, scoreFromManualStatus, toNumber, type RobThresholds } from './rob-score';
 import { RobRepository } from './rob.repository';
-import type { RobHistoryItemResponse, RobServiceMeta, RobStatusResponse } from './rob.types';
+import type {
+  RobHistoryItemResponse,
+  RobServiceMeta,
+  RobStatusResponse,
+  RobVillagesStatusResponse,
+} from './rob.types';
 import { WebhookService } from './webhook.service';
 
 const requireNumber = async (settingsService: SettingsService, key: string): Promise<number> => {
@@ -59,10 +64,16 @@ const toHistoryItem = (row: {
   recordedAt: row.recordedAt.toISOString(),
 });
 
+const formatVillageName = (name: string): string => {
+  const trimmed = name.trim();
+  return trimmed.toLowerCase().startsWith('desa ') ? trimmed : `Desa ${trimmed}`;
+};
+
 export class RobGuardianService {
   private readonly robRepository: RobRepository;
   private readonly webhookService: WebhookService;
   private readonly bmkgService: BmkgService;
+  private readonly villageRepository: VillageRepository;
 
   constructor(
     private readonly db: Database,
@@ -71,7 +82,8 @@ export class RobGuardianService {
   ) {
     this.robRepository = new RobRepository(db);
     this.webhookService = new WebhookService(this.robRepository, settingsService);
-    this.bmkgService = new BmkgService(settingsService, new VillageRepository(db));
+    this.villageRepository = new VillageRepository(db);
+    this.bmkgService = new BmkgService(settingsService, this.villageRepository);
   }
 
   private async getThresholds(): Promise<RobThresholds> {
@@ -93,6 +105,38 @@ export class RobGuardianService {
     }
 
     return toStatusResponse(current);
+  }
+
+  async getVillageStatuses(): Promise<RobVillagesStatusResponse> {
+    const current = await this.robRepository.getCurrentStatus();
+
+    if (!current) {
+      throw new NotFoundException('Current rob status not found');
+    }
+
+    const thresholds = await this.getThresholds();
+    const villages = await this.villageRepository.findAllWithBmkgRegion();
+
+    const villageStatuses = await Promise.all(
+      villages.map(async (village) => {
+        const metrics = await this.bmkgService.fetchMetricsForRegion(village.bmkgRegionCode);
+        const evaluation = evaluateRobMetrics(metrics, thresholds);
+
+        return {
+          villageId: village.id,
+          villageName: formatVillageName(village.name),
+          status: evaluation.status,
+          waterLevel: Number(evaluation.waveHeight.toFixed(2)),
+        };
+      }),
+    );
+
+    return {
+      status: current.status,
+      score: current.score,
+      waveHeight: toNumber(current.waveHeight),
+      villages: villageStatuses,
+    };
   }
 
   async getHistories(query: ListRobHistoriesQuery) {

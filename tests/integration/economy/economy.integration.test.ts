@@ -5,6 +5,7 @@ import { CommodityInventoryRepository } from '../../../src/modules/economy/commo
 import { assertErrorEnvelope, assertSuccessEnvelope } from '../../helpers/assertions';
 import {
   countEconomyAuditLogs,
+  createTestCommodityImageFile,
   createTestPaymentFile,
   getInventoryById,
   getLatestOrderPayment,
@@ -24,6 +25,8 @@ import {
   createManifest,
   departManifest,
   getInventoryMovements,
+  listInventory,
+  updateInventory,
   rejectCommodityPayment,
   submitCommodityPayment,
   verifyCommodityPayment,
@@ -96,6 +99,83 @@ describe('Economy Integration', () => {
   };
 
   describe('Inventory', () => {
+    it('create inventory with image — returns fileId and imageUrl', async () => {
+      const fishermanResult = await createFisherman(context.app, tokens.adminDesaUjunggagak, {
+        villageId: VILLAGE_UJUNGGAGAK,
+        fullName: 'Nelayan Gambar',
+        phone: '081234567899',
+      });
+      const fishermanId = (fishermanResult.body as { data: { id: string } }).data.id;
+      const fileId = await createTestCommodityImageFile(context.db);
+
+      const inventoryResult = await createInventory(context.app, tokens.adminDesaUjunggagak, {
+        fishermanId,
+        commodityId: SEED_COMMODITY_IKAN_BANDENG,
+        availableWeightKg: INITIAL_STOCK_KG,
+        pricePerKg: 50_000,
+        fileId,
+      });
+
+      expect(inventoryResult.response.status).toBe(201);
+      assertSuccessEnvelope(inventoryResult.body as Record<string, unknown>);
+
+      const created = (inventoryResult.body as { data: { id: string; fileId: string; imageUrl: string } }).data;
+      expect(created.fileId).toBe(fileId);
+      expect(created.imageUrl).toContain(fileId);
+
+      const listResult = await listInventory(context.app);
+      expect(listResult.response.status).toBe(200);
+
+      const listedItem = (listResult.body as { data: Array<{ id: string; fileId: string | null; imageUrl: string | null }> }).data.find(
+        (item) => item.id === created.id,
+      );
+      expect(listedItem?.fileId).toBe(fileId);
+      expect(listedItem?.imageUrl).toBe(created.imageUrl);
+
+      const stored = await getInventoryById(context.db, created.id);
+      expect(stored?.fileId).toBe(fileId);
+    });
+
+    it('update inventory image — dapat diperbarui dan dihapus', async () => {
+      const fishermanResult = await createFisherman(context.app, tokens.adminDesaUjunggagak, {
+        villageId: VILLAGE_UJUNGGAGAK,
+        fullName: 'Nelayan Update Gambar',
+        phone: '081234567898',
+      });
+      const fishermanId = (fishermanResult.body as { data: { id: string } }).data.id;
+      const initialFileId = await createTestCommodityImageFile(context.db);
+
+      const inventoryResult = await createInventory(context.app, tokens.adminDesaUjunggagak, {
+        fishermanId,
+        commodityId: SEED_COMMODITY_IKAN_BANDENG,
+        availableWeightKg: INITIAL_STOCK_KG,
+        pricePerKg: 50_000,
+        fileId: initialFileId,
+      });
+      const inventoryId = (inventoryResult.body as { data: { id: string } }).data.id;
+
+      const nextFileId = await createTestCommodityImageFile(context.db);
+      const updateResult = await updateInventory(context.app, tokens.adminDesaUjunggagak, inventoryId, {
+        pricePerKg: 55_000,
+        fileId: nextFileId,
+      });
+
+      expect(updateResult.response.status).toBe(200);
+      const updated = (updateResult.body as { data: { fileId: string | null; imageUrl: string | null; pricePerKg: number } }).data;
+      expect(updated.fileId).toBe(nextFileId);
+      expect(updated.imageUrl).toContain(nextFileId);
+      expect(updated.pricePerKg).toBe(55_000);
+
+      const removeImageResult = await updateInventory(context.app, tokens.adminDesaUjunggagak, inventoryId, {
+        fileId: null,
+      });
+
+      expect(removeImageResult.response.status).toBe(200);
+      const removed = (removeImageResult.body as { data: { fileId: string | null; imageUrl: string | null } }).data;
+      expect(removed.fileId).toBeNull();
+      expect(removed.imageUrl).toBeNull();
+    });
+
     it('create inventory — stock movement IN dibuat', async () => {
       const { inventoryId } = await setupEconomyFixtures();
 

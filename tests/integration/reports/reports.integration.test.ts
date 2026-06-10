@@ -38,9 +38,14 @@ describe('Reports Integration', () => {
       expect(response.status).toBe(200);
       assertSuccessEnvelope(body as Record<string, unknown>);
 
-      const data = (body as { data: { chartData: Array<{ date: string; revenue: number; visitors: number }>; summary: { averageDailyRevenue: number; totalPeriodRevenue: number } } }).data;
+      const data = (body as { data: { chartData: Array<{ date: string; revenue: number; visitors: number; confirmed: number }>; summary: { averageDailyRevenue: number; totalPeriodRevenue: number } } }).data;
       expect(data.chartData).toHaveLength(2);
-      expect(data.chartData[0]).toMatchObject({ date: '2026-06-01', revenue: expect.any(Number), visitors: expect.any(Number) });
+      expect(data.chartData[0]).toMatchObject({
+        date: '2026-06-01',
+        revenue: expect.any(Number),
+        visitors: expect.any(Number),
+        confirmed: expect.any(Number),
+      });
       expect(data.summary.totalPeriodRevenue).toBeGreaterThan(0);
       expect(data.summary.averageDailyRevenue).toBeGreaterThan(0);
     });
@@ -50,12 +55,13 @@ describe('Reports Integration', () => {
         headers: authHeader(tokens.adminDesaUjunggagak),
       });
       const body = (await response.json()) as {
-        data: { chartData: Array<{ revenue: number; visitors: number }>; summary: { totalPeriodRevenue: number } };
+        data: { chartData: Array<{ revenue: number; visitors: number; confirmed: number }>; summary: { totalPeriodRevenue: number } };
       };
 
       expect(response.status).toBe(200);
       expect(body.data.chartData[0]?.revenue).toBe(225000);
       expect(body.data.chartData[0]?.visitors).toBe(10);
+      expect(body.data.chartData[0]?.confirmed).toBe(10);
       expect(body.data.summary.totalPeriodRevenue).toBe(225000);
     });
 

@@ -100,6 +100,26 @@ export class VillageRepository {
     return rows.map((row) => row.code).filter((code): code is string => Boolean(code));
   }
 
+  async findAllWithBmkgRegion(): Promise<Array<{ id: string; name: string; bmkgRegionCode: string }>> {
+    const rows = await this.db
+      .select({
+        id: villages.id,
+        name: villages.name,
+        bmkgRegionCode: villages.bmkgRegionCode,
+      })
+      .from(villages)
+      .where(and(isNull(villages.deletedAt), sql`${villages.bmkgRegionCode} is not null`))
+      .orderBy(sql`${villages.name} asc`);
+
+    return rows
+      .filter((row): row is { id: string; name: string; bmkgRegionCode: string } => Boolean(row.bmkgRegionCode))
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        bmkgRegionCode: row.bmkgRegionCode,
+      }));
+  }
+
   async update(villageId: string, input: Partial<typeof villages.$inferInsert>): Promise<VillageRow | null> {
     const rows = await this.db
       .update(villages)

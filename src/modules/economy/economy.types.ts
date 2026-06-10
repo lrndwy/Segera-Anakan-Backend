@@ -21,6 +21,8 @@ export type CommodityInventoryListItemResponse = {
   villageName: string;
   availableWeightKg: number;
   pricePerKg: number;
+  fileId: string | null;
+  imageUrl: string | null;
 };
 
 export type CommodityInventoryDetailResponse = CommodityInventoryListItemResponse;

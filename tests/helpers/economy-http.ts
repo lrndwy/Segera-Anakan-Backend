@@ -19,10 +19,37 @@ export const createFisherman = async (
 export const createInventory = async (
   app: TestAppContext['app'],
   token: string,
-  input: { fishermanId: string; commodityId: string; availableWeightKg: number; pricePerKg: number },
+  input: {
+    fishermanId: string;
+    commodityId: string;
+    availableWeightKg: number;
+    pricePerKg: number;
+    fileId?: string;
+  },
 ) => {
   const response = await app.request(`${env.API_PREFIX}/commodity-inventory`, {
     method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(input),
+  });
+
+  return { response, body: await response.json() };
+};
+
+export const listInventory = async (app: TestAppContext['app']) => {
+  const response = await app.request(`${env.API_PREFIX}/commodity-inventory`);
+
+  return { response, body: await response.json() };
+};
+
+export const updateInventory = async (
+  app: TestAppContext['app'],
+  token: string,
+  inventoryId: string,
+  input: { availableWeightKg?: number; pricePerKg?: number; fileId?: string | null },
+) => {
+  const response = await app.request(`${env.API_PREFIX}/commodity-inventory/${inventoryId}`, {
+    method: 'PATCH',
     headers: authHeader(token),
     body: JSON.stringify(input),
   });

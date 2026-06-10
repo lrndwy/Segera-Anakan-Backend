@@ -14,3 +14,6 @@ export const BMKG_DEFAULT_TIDE_HEIGHT = 0;
 
 /** Ambil prakiraan dalam rentang jam ke depan */
 export const BMKG_FORECAST_HOURS_AHEAD = 24;
+
+/** Jumlah hari prakiraan cuaca untuk endpoint publik */
+export const BMKG_FORECAST_DAYS = 7;

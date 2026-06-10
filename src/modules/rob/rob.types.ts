@@ -24,3 +24,17 @@ export type RobServiceMeta = {
   actorUserId: string;
   ipAddress: string;
 };
+
+export type RobVillageStatusItem = {
+  villageId: string;
+  villageName: string;
+  status: RobStatus;
+  waterLevel: number;
+};
+
+export type RobVillagesStatusResponse = {
+  status: RobStatus;
+  score: number;
+  waveHeight: number;
+  villages: RobVillageStatusItem[];
+};

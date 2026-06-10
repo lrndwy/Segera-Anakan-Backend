@@ -88,6 +88,45 @@ describe('ROB Guardian Integration', () => {
     });
   });
 
+  describe('GET /rob-status/villages', () => {
+    it('happy path — returns aggregate status with villages array', async () => {
+      const response = await context.app.request(`${api}/rob-status/villages`);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      assertSuccessEnvelope(body as Record<string, unknown>);
+
+      const data = (body as { data: Record<string, unknown> }).data;
+      expect(data).toMatchObject({
+        status: expect.any(String),
+        score: expect.any(Number),
+        waveHeight: expect.any(Number),
+        villages: expect.any(Array),
+      });
+
+      const villages = data.villages as Array<Record<string, unknown>>;
+      expect(villages.length).toBeGreaterThan(0);
+      expect(villages[0]).toMatchObject({
+        villageId: expect.any(String),
+        villageName: expect.stringMatching(/^Desa /),
+        status: expect.any(String),
+        waterLevel: expect.any(Number),
+      });
+    });
+
+    it('not found — returns 404 when snapshot is missing', async () => {
+      await clearRobCurrentStatus(context.db);
+
+      const response = await context.app.request(`${api}/rob-status/villages`);
+      const body = await response.json();
+
+      expect(response.status).toBe(404);
+      assertErrorEnvelope(body as Record<string, unknown>);
+
+      await restoreRobCurrentStatus(context.db);
+    });
+  });
+
   describe('GET /rob-histories', () => {
     it('happy path — returns 200 with paginated histories', async () => {
       const response = await context.app.request(`${api}/rob-histories?page=1&limit=10`);

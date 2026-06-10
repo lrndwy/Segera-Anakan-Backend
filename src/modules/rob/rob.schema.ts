@@ -31,6 +31,20 @@ export const robStatusResponseSchema = z.object({
   recordedAt: z.string(),
 });
 
+export const robVillageStatusItemSchema = z.object({
+  villageId: z.string(),
+  villageName: z.string(),
+  status: robStatusSchema,
+  waterLevel: z.number(),
+});
+
+export const robVillagesStatusResponseSchema = z.object({
+  status: robStatusSchema,
+  score: z.number(),
+  waveHeight: z.number(),
+  villages: z.array(robVillageStatusItemSchema),
+});
+
 export const robHistoryItemResponseSchema = z.object({
   id: z.string().uuid(),
   status: robStatusSchema,
