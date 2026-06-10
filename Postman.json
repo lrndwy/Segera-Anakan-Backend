@@ -12,7 +12,7 @@
     },
     {
       "key": "apiPrefix",
-      "value": "/api/v1"
+      "value": "api/v1"
     },
     {
       "key": "accessToken",
