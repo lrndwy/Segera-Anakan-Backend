@@ -19,7 +19,6 @@ import type {
   ListCommodityInventoryQuery,
   UpdateCommodityInventoryInput,
 } from './economy.schema';
-import { buildFileDownloadUrl } from '../../utils/file-url';
 import type { CommodityInventoryDetailResponse, CommodityInventoryListItemResponse, EconomyServiceMeta, StockMovementResponse } from './economy.types';
 import { toNumber } from './economy.utils';
 
@@ -48,7 +47,7 @@ const toListItem = (row: {
   availableWeightKg: toNumber(row.inventory.availableWeightKg),
   pricePerKg: toNumber(row.inventory.pricePerKg),
   fileId: row.inventory.fileId,
-  imageUrl: row.inventory.fileId ? buildFileDownloadUrl(row.inventory.fileId) : null,
+  imageUrl: row.imageUrl ?? null,
 });
 
 export class CommodityInventoryService {
