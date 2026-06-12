@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "segara-anakan-hub-api",
     "name": "SegaraAnakan Hub API",
-    "description": "Koleksi lengkap endpoint backend SegaraAnakan Hub (95 endpoint).\n\nSetup:\n1. Set variabel baseUrl (default: http://localhost:3100 — port host Docker)\n2. Jalankan Login di folder Auth\n3. Endpoint public tidak memerlukan token\n\nRole:\n- ADMIN_KECAMATAN: akses penuh\n- ADMIN_DESA: village-scoped\n- KADER_DESA: monitoring air",
+    "description": "Koleksi lengkap endpoint backend SegaraAnakan Hub (98 endpoint).\n\nSetup:\n1. Set variabel baseUrl (default: http://localhost:3100 — port host Docker)\n2. Jalankan Login di folder Auth\n3. Endpoint public tidak memerlukan token\n\nRole:\n- ADMIN_KECAMATAN: akses penuh\n- ADMIN_DESA: village-scoped\n- KADER_DESA: monitoring air\n\nCatatan file/gambar:\n- URL file (upload, imageUrl, qris.url) mengarah ke proxy GET /files/download/:id\n- Set env PUBLIC_API_BASE_URL di server production agar URL absolut",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -619,7 +619,7 @@
                 "upload"
               ]
             },
-            "description": "Multipart field: file",
+            "description": "Multipart field: file.\n\nResponse url mengarah ke proxy publik: GET /files/download/:id (bukan MinIO langsung).",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -643,6 +643,29 @@
           }
         },
         {
+          "name": "Download File (Public Proxy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/files/download/{{fileId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{apiPrefix}}",
+                "files",
+                "download",
+                "{{fileId}}"
+              ]
+            },
+            "description": "Public — stream binary file dari MinIO via backend proxy.\n\nGunakan URL ini di <img src> atau unduh langsung tanpa auth.\n\nResponse: binary stream (Content-Type sesuai mime file).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
           "name": "Get File by ID",
           "request": {
             "method": "GET",
@@ -658,7 +681,7 @@
                 "{{fileId}}"
               ]
             },
-            "description": "",
+            "description": "Metadata file (id, url proxy download). Wajib auth.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -882,7 +905,29 @@
                 "forecast"
               ]
             },
-            "description": "Public — prakiraan cuaca 7 hari.\n\nResponse item: date, type, temp, hum, wind, hourly[] (time, type, temp).",
+            "description": "Public — prakiraan cuaca 7 hari (agregat).\n\nResponse item: date, type, temp, hum, wind, hourly[] (time, type, temp).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Get 7-Day Forecast Per Village",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}{{apiPrefix}}/weather/villages-forecast",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{apiPrefix}}",
+                "weather",
+                "villages-forecast"
+              ]
+            },
+            "description": "Public — prakiraan cuaca 7 hari per desa (format matriks dashboard publik).\n\nResponse item:\n- villageName\n- forecasts[]: date, type, tempMin, tempMax, humMin, humMax\n\nSumber: BMKG per bmkg_region_code desa.",
             "auth": {
               "type": "noauth"
             }
@@ -1122,7 +1167,7 @@
                     "water-status"
                   ]
                 },
-                "description": "",
+                "description": "Public — status air per desa.\n\nResponse item: villageId, villageName, status, lastUpdated, percentRemaining, capacityTotalLiters, currentVolumeLiters.\n\npercentRemaining null jika belum ada laporan air.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -1639,7 +1684,7 @@
                     "bookings"
                   ]
                 },
-                "description": "",
+                "description": "Public — buat booking wisata.\n\nResponse: bookingId, invoiceNumber, totalAmount, qris { villageId, url }, qrisPayload (null sampai payment gateway terhubung).\n\nqris.url mengarah ke proxy file download QRIS desa.",
                 "auth": {
                   "type": "noauth"
                 },
@@ -2139,7 +2184,7 @@
                     }
                   ]
                 },
-                "description": "Public — daftar inventori komoditas.\n\nResponse item mencakup fileId dan imageUrl untuk gambar produk.",
+                "description": "Public — daftar inventori komoditas.\n\nResponse item: fileId, imageUrl (proxy GET /files/download/:id), commodityName, availableWeightKg, pricePerKg, dll.",
                 "auth": {
                   "type": "noauth"
                 }
@@ -2187,7 +2232,7 @@
                     "commodity-orders"
                   ]
                 },
-                "description": "",
+                "description": "Public — buat pesanan komoditas.\n\nResponse: orderId, invoiceNumber, totalAmount, qris { villageId, url }, qrisPayload (null sampai payment gateway terhubung).",
                 "auth": {
                   "type": "noauth"
                 },
@@ -2450,7 +2495,7 @@
                     "commodity-inventory"
                   ]
                 },
-                "description": "ADMIN_DESA / ADMIN_KECAMATAN — buat inventori komoditas.\n\nAlur gambar:\n1. Upload gambar via POST /files/upload\n2. Kirim fileId hasil upload pada request body (opsional).",
+                "description": "ADMIN_DESA / ADMIN_KECAMATAN — buat inventori komoditas.\n\nGunakan commodityName (free text) ATAU commodityId (katalog). Jika commodityName belum ada, backend auto-create.\n\nAlur gambar:\n1. Upload gambar via POST /files/upload\n2. Kirim fileId hasil upload pada request body (opsional).",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -2463,7 +2508,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"fishermanId\": \"{{fishermanId}}\",\n  \"commodityId\": \"{{commodityId}}\",\n  \"availableWeightKg\": 100,\n  \"pricePerKg\": 25000,\n  \"fileId\": \"{{fileId}}\"\n}",
+                  "raw": "{\n  \"fishermanId\": \"{{fishermanId}}\",\n  \"commodityName\": \"Kepiting Bakau Super\",\n  \"availableWeightKg\": 100,\n  \"pricePerKg\": 25000,\n  \"fileId\": \"{{fileId}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2620,6 +2665,35 @@
                   ]
                 },
                 "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Inventory",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}{{apiPrefix}}/commodity-inventory/{{inventoryId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "{{apiPrefix}}",
+                    "commodity-inventory",
+                    "{{inventoryId}}"
+                  ]
+                },
+                "description": "ADMIN_DESA / ADMIN_KECAMATAN — hapus inventori komoditas.\n\n409 Conflict jika inventori sudah direferensikan order.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [

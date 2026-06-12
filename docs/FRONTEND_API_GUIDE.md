@@ -21,15 +21,18 @@ Dokumen ini menjelaskan **seluruh endpoint REST API** yang tersedia di backend H
 8. [User Management](#8-user-management)
 9. [File Upload](#9-file-upload)
 10. [Village Management](#10-village-management)
-11. [ROB Guardian](#11-rob-guardian)
-12. [Banyu Mili (Air)](#12-banyu-mili-air)
-13. [Tourism (Wisata)](#13-tourism-wisata)
-14. [Economy (Ekonomi)](#14-economy-ekonomi)
-15. [Agency](#15-agency)
-16. [Settings](#16-settings)
-17. [Audit Log](#17-audit-log)
-18. [Alur Bisnis Frontend](#18-alur-bisnis-frontend)
-19. [Referensi Enum](#19-referensi-enum)
+11. [Weather (Cuaca)](#11-weather-cuaca)
+12. [ROB Guardian](#12-rob-guardian)
+13. [Banyu Mili (Air)](#13-banyu-mili-air)
+14. [Tourism (Wisata)](#14-tourism-wisata)
+15. [Economy (Ekonomi)](#15-economy-ekonomi)
+16. [Agency](#16-agency)
+17. [Settings](#17-settings)
+18. [Audit Log](#18-audit-log)
+19. [Dashboard](#19-dashboard)
+20. [Reports](#20-reports)
+21. [Alur Bisnis Frontend](#23-alur-bisnis-frontend)
+22. [Referensi Enum](#24-referensi-enum)
 
 ---
 
@@ -204,7 +207,7 @@ Contoh: `GET /api/v1/users?page=2&limit=20`
 
 ## 5. Ringkasan Endpoint
 
-Total: **93 endpoint HTTP** (89 modul + 4 infrastruktur)
+Total: **98 endpoint HTTP** (94 modul + 4 infrastruktur)
 
 | Modul | Prefix | Jumlah | Public |
 |-------|--------|--------|--------|
@@ -213,12 +216,13 @@ Total: **93 endpoint HTTP** (89 modul + 4 infrastruktur)
 | Dashboard | `/api/v1/dashboard` | 1 | 0 |
 | Reports | `/api/v1/reports` | 1 | 0 |
 | Users | `/api/v1/users` | 6 | 0 |
-| Files | `/api/v1/files` | 3 | 0 |
+| Files | `/api/v1/files` | 4 | 1 |
 | Villages | `/api/v1/villages` | 4 | 0 |
+| Weather | `/api/v1/weather` | 2 | 2 |
 | ROB Guardian | `/api/v1/rob-status`, `/rob-histories`, `/rob` | 5 | 2 |
 | Banyu Mili | `/api/v1/water-*` | 12 | 2 |
 | Tourism | `/api/v1/destinations`, `/boat-owners`, `/bookings`, `/booking-payments` | 14 | 5 |
-| Economy | `/api/v1/commodities`, `/fishermen`, `/commodity-*`, `/manifests` | 23 | 5 |
+| Economy | `/api/v1/commodities`, `/fishermen`, `/commodity-*`, `/manifests` | 24 | 5 |
 | Agency | `/api/v1/agencies` | 7 | 0 |
 | Settings | `/api/v1/settings` | 5 | 0 |
 | Audit Log | `/api/v1/audit-logs` | 4 | 0 |
@@ -488,7 +492,9 @@ Soft delete user.
 
 Base path: `/api/v1/files`
 
-File disimpan di MinIO. Upload file **terlebih dahulu**, lalu gunakan `data.id` sebagai `fileId` di endpoint lain (QRIS, bukti bayar, gambar destinasi).
+File disimpan di MinIO secara internal. Upload file **terlebih dahulu**, lalu gunakan `data.id` sebagai `fileId` di endpoint lain (QRIS, bukti bayar, gambar komoditas, gambar destinasi).
+
+> **Akses publik gambar:** Jangan gunakan URL MinIO langsung (port storage sering tertutup firewall). Semua `url` / `imageUrl` / `qris.url` mengarah ke proxy backend `GET /api/v1/files/download/:id`. Set env `PUBLIC_API_BASE_URL` di server production (mis. `http://31.97.107.17:3100`) agar response berisi URL absolut.
 
 ### `POST /api/v1/files/upload` 🔒 View
 
@@ -510,14 +516,30 @@ File disimpan di MinIO. Upload file **terlebih dahulu**, lalu gunakan `data.id` 
     "originalName": "bukti.jpg",
     "mimeType": "image/jpeg",
     "size": 12345,
-    "url": "https://..."
+    "url": "/api/v1/files/download/uuid"
   }
 }
 ```
 
+> Field `url` adalah proxy download backend, bukan URL MinIO langsung.
+
+---
+
+### `GET /api/v1/files/download/{id}` 🌐
+
+Unduh/stream file secara publik via proxy backend (tanpa auth).
+
+**Response 200:** binary stream (`Content-Type` sesuai mime file, mis. `image/jpeg`)
+
+**Error:** `404` file tidak ditemukan
+
+Gunakan URL ini di `<img src>` pada halaman publik.
+
 ---
 
 ### `GET /api/v1/files/{id}` 🔒 View
+
+Metadata file (wajib auth).
 
 **Response 200:**
 ```json
@@ -526,7 +548,7 @@ File disimpan di MinIO. Upload file **terlebih dahulu**, lalu gunakan `data.id` 
   "message": "File retrieved successfully",
   "data": {
     "id": "uuid",
-    "url": "https://..."
+    "url": "/api/v1/files/download/uuid"
   }
 }
 ```
@@ -607,7 +629,62 @@ Set QRIS desa dari file yang sudah di-upload.
 
 ---
 
-## 11. ROB Guardian
+## 11. Weather (Cuaca)
+
+Base path: `/api/v1/weather`
+
+Prakiraan cuaca dari BMKG. Data tidak disimpan di database — di-fetch runtime per region desa (`bmkg_region_code`).
+
+### `GET /api/v1/weather/forecast` 🌐
+
+Prakiraan cuaca 7 hari (agregat umum).
+
+**Response 200 — item:**
+```json
+{
+  "date": "2026-06-11",
+  "type": "Cerah",
+  "temp": 29,
+  "hum": 80,
+  "wind": 15,
+  "hourly": [
+    { "time": "06:00", "type": "Cerah", "temp": 26 }
+  ]
+}
+```
+
+---
+
+### `GET /api/v1/weather/villages-forecast` 🌐
+
+Prakiraan cuaca 7 hari **per desa** (format matriks dashboard publik).
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "message": "Prakiraan cuaca per desa berhasil diambil",
+  "data": [
+    {
+      "villageName": "Ujunggagak",
+      "forecasts": [
+        {
+          "date": "2026-06-11",
+          "type": "Cerah",
+          "tempMin": 22,
+          "tempMax": 29,
+          "humMin": 68,
+          "humMax": 96
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 12. ROB Guardian
 
 Modul monitoring risiko rob (Rising Ocean/Banjir).
 
@@ -688,7 +765,7 @@ Kirim test webhook notifikasi rob.
 
 ---
 
-## 12. Banyu Mili (Air)
+## 13. Banyu Mili (Air)
 
 Modul monitoring ketersediaan air desa.
 
@@ -706,11 +783,20 @@ Status air semua desa.
       "villageId": "uuid",
       "villageName": "Desa Segara Anakan",
       "status": "AMAN",
-      "lastUpdated": "2026-06-06T10:00:00.000Z"
+      "lastUpdated": "2026-06-06T10:00:00.000Z",
+      "percentRemaining": 85,
+      "capacityTotalLiters": 50000,
+      "currentVolumeLiters": 42500
     }
   ]
 }
 ```
+
+| Field | Keterangan |
+|-------|------------|
+| `percentRemaining` | Persentase sisa air dari laporan terbaru (`volumePercent`). `null` jika belum ada laporan |
+| `capacityTotalLiters` | Total kapasitas semua aset air aktif di desa |
+| `currentVolumeLiters` | Estimasi volume saat ini (`capacityTotalLiters × percentRemaining / 100`) |
 
 **Status enum:** `AMAN`, `SIAGA`, `KRITIS`
 
@@ -868,7 +954,7 @@ Resolve alert.
 
 ---
 
-## 13. Tourism (Wisata)
+## 14. Tourism (Wisata)
 
 ### Destinations — `/api/v1/destinations`
 
@@ -1013,13 +1099,14 @@ Buat booking wisata (public).
     "totalAmount": 500000,
     "qris": {
       "villageId": "uuid",
-      "url": "https://..."
-    }
+      "url": "/api/v1/files/download/uuid"
+    },
+    "qrisPayload": null
   }
 }
 ```
 
-> `qris` bernilai `null` jika desa belum mengatur QRIS.
+> `qris` bernilai `null` jika desa belum mengatur QRIS. `qris.url` adalah proxy download gambar QRIS. `qrisPayload` berisi string EMV QRIS saat payment gateway terhubung (saat ini `null`).
 
 ---
 
@@ -1085,7 +1172,7 @@ Submit bukti pembayaran booking.
 
 ---
 
-## 14. Economy (Ekonomi)
+## 15. Economy (Ekonomi)
 
 ### Commodity Inventory — `/api/v1/commodity-inventory`
 
@@ -1106,7 +1193,9 @@ Katalog komoditas tersedia (public).
   "villageId": "uuid",
   "villageName": "Desa Segara Anakan",
   "availableWeightKg": 50.5,
-  "pricePerKg": 25000
+  "pricePerKg": 25000,
+  "fileId": "uuid | null",
+  "imageUrl": "/api/v1/files/download/uuid | null"
 }
 ```
 
@@ -1114,24 +1203,28 @@ Katalog komoditas tersedia (public).
 
 #### `GET /api/v1/commodity-inventory/{id}` 🌐
 
-Detail inventory.
+Detail inventory (termasuk `fileId` dan `imageUrl`).
 
 ---
 
 #### `POST /api/v1/commodity-inventory` 🔒 AD+
 
-| Field | Tipe | Wajib |
-|-------|------|-------|
-| `fishermanId` | uuid | ✅ |
-| `commodityId` | uuid | ✅ |
-| `availableWeightKg` | number (>0) | ✅ |
-| `pricePerKg` | number (>0) | ✅ |
+| Field | Tipe | Wajib | Keterangan |
+|-------|------|-------|------------|
+| `fishermanId` | uuid | ✅ | — |
+| `commodityName` | string | ⚠️ | Free text; wajib jika `commodityId` tidak dikirim |
+| `commodityId` | uuid | ⚠️ | Alternatif `commodityName`; wajib jika `commodityName` tidak dikirim |
+| `availableWeightKg` | number (>0) | ✅ | — |
+| `pricePerKg` | number (>0) | ✅ | — |
+| `fileId` | uuid | — | ID gambar dari `POST /files/upload` |
+
+Jika `commodityName` belum ada di katalog, backend membuat entri komoditas baru secara otomatis (case-insensitive).
 
 ---
 
 #### `PATCH /api/v1/commodity-inventory/{id}` 🔒 AD+
 
-Field opsional: `availableWeightKg`, `pricePerKg`.
+Field opsional: `availableWeightKg`, `pricePerKg`, `fileId` (`null` untuk hapus gambar).
 
 ---
 
@@ -1167,6 +1260,16 @@ Riwayat pergerakan stok.
 ```
 
 **movementType enum:** `IN`, `OUT`, `ADJUSTMENT`
+
+---
+
+#### `DELETE /api/v1/commodity-inventory/{id}` 🔒 AD+
+
+Hapus inventori komoditas.
+
+**Response 200:** message only
+
+**Error:** `409` jika inventori sudah direferensikan oleh order (`commodity_order_items`)
 
 ---
 
@@ -1243,11 +1346,14 @@ Buat pesanan komoditas (public).
     "totalAmount": 500000,
     "qris": {
       "villageId": "uuid",
-      "url": "https://..."
-    }
+      "url": "/api/v1/files/download/uuid"
+    },
+    "qrisPayload": null
   }
 }
 ```
+
+> `qrisPayload` akan berisi string EMV QRIS saat payment gateway terhubung.
 
 ---
 
@@ -1396,7 +1502,7 @@ Tandai manifest selesai.
 
 ---
 
-## 15. Agency
+## 16. Agency
 
 Base path: `/api/v1/agencies` — Semua endpoint: 🔒 **AK**
 
@@ -1499,7 +1605,7 @@ Kirim notifikasi WhatsApp via webhook.
 
 ---
 
-## 16. Settings
+## 17. Settings
 
 Base path: `/api/v1/settings` — Semua endpoint: 🔒 **AK**
 
@@ -1551,7 +1657,7 @@ Field opsional: `value`, `description`.
 
 ---
 
-## 17. Audit Log
+## 18. Audit Log
 
 Base path: `/api/v1/audit-logs` — Semua endpoint: 🔒 **AK**
 
@@ -1646,7 +1752,7 @@ Detail audit log.
 
 ---
 
-## 18. Dashboard
+## 19. Dashboard
 
 Base path: `/api/v1/dashboard`
 
@@ -1674,7 +1780,7 @@ Statistik utama dashboard.
 
 ---
 
-## 19. Reports
+## 20. Reports
 
 Base path: `/api/v1/reports`
 
@@ -1696,7 +1802,7 @@ Laporan revenue dan pengunjung per periode.
   "message": "Reports retrieved",
   "data": {
     "chartData": [
-      { "date": "2026-06-01", "revenue": 500000, "visitors": 10 }
+      { "date": "2026-06-01", "revenue": 500000, "visitors": 10, "confirmed": 8 }
     ],
     "summary": {
       "averageDailyRevenue": 550000,
@@ -1706,11 +1812,17 @@ Laporan revenue dan pengunjung per periode.
 }
 ```
 
+| Field `chartData` | Keterangan |
+|-------------------|------------|
+| `revenue` | Pendapatan booking + pesanan komoditas (status CONFIRMED/COMPLETED) |
+| `visitors` | Total `totalPeople` booking (status CONFIRMED/COMPLETED) |
+| `confirmed` | Total `totalPeople` booking berstatus `CONFIRMED` saja |
+
 **Ownership:** `ADMIN_DESA` hanya data desa sendiri.
 
 ---
 
-## 20. ROB Village Alert (tambahan)
+### ROB Village Alert (tambahan)
 
 ### `POST /api/v1/rob/webhook/village-alert` 🔒 AK
 
@@ -1728,7 +1840,7 @@ Kirim peringatan rob ke desa tertentu via webhook.
 
 ---
 
-## 21. Commodity Catalog (tambahan)
+### Commodity Catalog (tambahan)
 
 ### `GET /api/v1/commodities` 🌐
 
@@ -1749,7 +1861,7 @@ Diurutkan: `categoryName ASC`, `name ASC`.
 
 ---
 
-## 22. Alur Bisnis Frontend
+## 23. Alur Bisnis Frontend
 
 ### Alur Autentikasi
 
@@ -1764,12 +1876,14 @@ Diurutkan: `categoryName ASC`, `name ASC`.
 ### Alur Upload File
 
 ```
-1. POST /files/upload (multipart)  → dapat fileId + url
+1. POST /files/upload (multipart)  → dapat fileId + url (proxy download)
 2. Gunakan fileId di:
    - PATCH /villages/{id}/qris
    - POST /booking-payments
    - POST /commodity-payments
+   - POST /commodity-inventory (fileId)
    - POST /destinations (imageFileIds)
+3. Tampilkan gambar publik via GET /files/download/{fileId} atau imageUrl dari response API
 ```
 
 ### Alur Booking Wisata (Public)
@@ -1820,14 +1934,17 @@ Endpoint yang bisa dipanggil tanpa login untuk halaman publik:
 |------|----------|
 | Status rob | `GET /rob-status` |
 | Riwayat rob | `GET /rob-histories` |
+| Cuaca 7 hari (agregat) | `GET /weather/forecast` |
+| Cuaca 7 hari per desa | `GET /weather/villages-forecast` |
 | Status air desa | `GET /water-status` |
 | Aset air | `GET /water-assets/public` |
 | Destinasi wisata | `GET /destinations` |
 | Katalog komoditas | `GET /commodity-inventory` |
+| Katalog master komoditas | `GET /commodities` |
 
 ---
 
-## 23. Referensi Enum
+## 24. Referensi Enum
 
 ### User
 
@@ -1879,10 +1996,11 @@ Endpoint yang bisa dipanggil tanpa login untuk halaman publik:
 2. **TypeScript types** bisa di-generate dari `GET /openapi.json` menggunakan tools seperti `openapi-typescript`.
 3. **Pagination UI** — gunakan `meta.total_pages` dan `meta.total_items` untuk pager.
 4. **Upload file** — selalu upload dulu sebelum submit form yang butuh `fileId`.
-5. **Tanggal** — kirim sebagai string `YYYY-MM-DD` untuk field date; response datetime dalam format ISO 8601.
-6. **UUID** — semua ID resource menggunakan format UUID v4.
-7. **Village scope** — untuk user AD/KD, filter UI berdasarkan `villageId` dari `/auth/me`; backend sudah enforce di sisi server.
-8. **Testing** — gunakan `Postman.json` yang sudah disediakan dengan variabel `baseUrl`, `accessToken`, dll.
+5. **Gambar publik** — gunakan `imageUrl` / `GET /files/download/:id`, jangan URL MinIO langsung.
+6. **Tanggal** — kirim sebagai string `YYYY-MM-DD` untuk field date; response datetime dalam format ISO 8601.
+7. **UUID** — semua ID resource menggunakan format UUID v4.
+8. **Village scope** — untuk user AD/KD, filter UI berdasarkan `villageId` dari `/auth/me`; backend sudah enforce di sisi server.
+9. **Testing** — gunakan `Postman.json` yang sudah disediakan dengan variabel `baseUrl`, `accessToken`, dll.
 
 ---
 
