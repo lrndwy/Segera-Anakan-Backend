@@ -45,6 +45,7 @@ export type CreateBookingResponse = {
     villageId: string;
     url: string;
   } | null;
+  qrisPayload: string | null;
 };
 
 export type BookingListItemResponse = {

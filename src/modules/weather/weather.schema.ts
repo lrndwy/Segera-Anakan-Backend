@@ -15,6 +15,20 @@ export const weatherForecastDaySchema = z.object({
   hourly: z.array(weatherHourlyItemSchema),
 });
 
+export const villageForecastDaySchema = z.object({
+  date: z.string(),
+  type: z.string(),
+  tempMin: z.number().int(),
+  tempMax: z.number().int(),
+  humMin: z.number().int(),
+  humMax: z.number().int(),
+});
+
+export const villageWeatherForecastSchema = z.object({
+  villageName: z.string(),
+  forecasts: z.array(villageForecastDaySchema),
+});
+
 export const successEnvelopeSchema = <T extends z.ZodType>(dataSchema: T) =>
   z.object({
     success: z.literal(true),

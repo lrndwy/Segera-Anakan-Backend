@@ -100,6 +100,28 @@ export const createFileRouter = ({ fileService, authMiddleware }: FileRouteDeps)
     },
   });
 
+  const downloadFileRoute = createRoute({
+    method: 'get',
+    path: '/download/{id}',
+    tags: ['File Upload'],
+    summary: 'Download file (public proxy)',
+    security: [],
+    request: {
+      params: fileIdParamSchema,
+    },
+    responses: {
+      200: {
+        description: 'File binary stream',
+        content: {
+          'application/octet-stream': {
+            schema: z.string().openapi({ type: 'string', format: 'binary' }),
+          },
+        },
+      },
+      404: { description: 'Not found', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+    },
+  });
+
   const deleteFileRoute = createRoute({
     method: 'delete',
     path: '/{id}',
@@ -143,6 +165,20 @@ export const createFileRouter = ({ fileService, authMiddleware }: FileRouteDeps)
       },
     };
   };
+
+  router.openapi(downloadFileRoute, async (context) => {
+    const { id } = context.req.valid('param');
+    const file = await fileService.downloadPublic(id);
+
+    return new Response(new Uint8Array(file.body), {
+      status: 200,
+      headers: {
+        'Content-Type': file.contentType,
+        'Content-Disposition': `inline; filename="${file.originalName}"`,
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  });
 
   router.openapi(getFileRoute, async (context) => {
     const { id } = context.req.valid('param');

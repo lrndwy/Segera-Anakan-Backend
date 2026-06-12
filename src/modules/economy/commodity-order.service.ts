@@ -8,6 +8,7 @@ import { assertVillageAccess } from '../../policies/village-access.policy';
 import { runTransaction } from '../../lib/transaction';
 import type { AuditLogService } from '../../services/audit-log.service';
 import type { CurrentUser } from '../../types/current-user';
+import { buildFileDownloadUrl } from '../../utils/file-url';
 import { VillageRepository } from '../village/village.repository';
 import { CommodityInventoryRepository } from './commodity-inventory.repository';
 import { CommodityOrderRepository } from './commodity-order.repository';
@@ -164,14 +165,17 @@ export class CommodityOrderService {
         newData: { invoiceNumber, totalAmount, status: order.status },
       });
 
+      const hasQris = Boolean(village?.qrisFileIdValue);
+
       return {
         orderId: order.id,
         invoiceNumber: order.invoiceNumber,
         totalAmount,
         qris:
-          village?.qrisFileIdValue && village.qrisUrl
-            ? { villageId, url: village.qrisUrl }
+          hasQris && village?.qrisFileIdValue
+            ? { villageId, url: buildFileDownloadUrl(village.qrisFileIdValue) }
             : null,
+        qrisPayload: null,
       };
     });
   }

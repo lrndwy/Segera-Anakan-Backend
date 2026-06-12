@@ -25,6 +25,7 @@ const envSchema = z.object({
   STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
   STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
   STORAGE_PUBLIC_BASE_URL: z.string().optional(),
+  PUBLIC_API_BASE_URL: z.string().url().optional(),
   EMAIL_QUEUE_NAME: z.string().default('email'),
   EMAIL_FROM: z.string().email().default('no-reply@example.com'),
   SEED_ADMIN_EMAIL: z.string().email().default('admin@example.com'),

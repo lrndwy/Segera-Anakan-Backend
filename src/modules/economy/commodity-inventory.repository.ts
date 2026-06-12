@@ -4,6 +4,7 @@ import type { DatabaseClient } from '../../db/client';
 import {
   commodities,
   commodityInventory,
+  commodityOrderItems,
   commodityStockMovements,
   files,
   fishermen,
@@ -122,5 +123,20 @@ export class CommodityInventoryRepository {
       .where(eq(commodityStockMovements.inventoryId, inventoryId))
       .orderBy(desc(commodityStockMovements.createdAt))
       .limit(limit);
+  }
+
+  async hasOrderItems(inventoryId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: commodityOrderItems.id })
+      .from(commodityOrderItems)
+      .where(eq(commodityOrderItems.inventoryId, inventoryId))
+      .limit(1);
+
+    return rows.length > 0;
+  }
+
+  async delete(inventoryId: string): Promise<boolean> {
+    const rows = await this.db.delete(commodityInventory).where(eq(commodityInventory.id, inventoryId)).returning();
+    return rows.length > 0;
   }
 }

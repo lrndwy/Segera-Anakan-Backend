@@ -8,6 +8,7 @@ import { assertVillageAccess } from '../../policies/village-access.policy';
 import { runTransaction } from '../../lib/transaction';
 import type { AuditLogService } from '../../services/audit-log.service';
 import type { CurrentUser } from '../../types/current-user';
+import { buildFileDownloadUrl } from '../../utils/file-url';
 import { FileRepository } from '../file/file.repository';
 import { VillageRepository } from '../village/village.repository';
 import { BoatAssignmentService } from './boat-assignment.service';
@@ -160,17 +161,20 @@ export class BookingService {
       },
     });
 
+    const hasQris = Boolean(village?.qrisFileIdValue);
+
     return {
       bookingId: booking.id,
       invoiceNumber: booking.invoiceNumber,
       totalAmount,
       qris:
-        village?.qrisFileIdValue && village.qrisUrl
+        hasQris && village?.qrisFileIdValue
           ? {
               villageId: destination.villageId,
-              url: village.qrisUrl,
+              url: buildFileDownloadUrl(village.qrisFileIdValue),
             }
           : null,
+      qrisPayload: null,
     };
   }
 

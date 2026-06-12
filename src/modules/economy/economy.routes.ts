@@ -148,6 +148,21 @@ export const createCommodityInventoryRouter = ({
     },
   });
 
+  const deleteRoute = createRoute({
+    method: 'delete',
+    path: '/{id}',
+    tags: ['Economy'],
+    summary: 'Delete commodity inventory',
+    security: [{ bearerAuth: [] }],
+    middleware: adminDesaMiddleware(authMiddleware),
+    request: { params: inventoryIdParamSchema },
+    responses: {
+      200: { description: 'Inventory deleted', content: { 'application/json': { schema: messageEnvelopeSchema } } },
+      404: { description: 'Not found', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+      409: { description: 'Conflict', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+    },
+  });
+
   const movementsRoute = createRoute({
     method: 'get',
     path: '/{id}/movements',
@@ -201,6 +216,13 @@ export const createCommodityInventoryRouter = ({
     const { currentUser } = getActorMeta(context);
     const movements = await commodityInventoryService.getStockMovements(id, currentUser);
     return context.json(successResponse('Stock movements retrieved successfully', movements), 200);
+  });
+
+  router.openapi(deleteRoute, async (context) => {
+    const { id } = context.req.valid('param');
+    const { currentUser, meta } = getActorMeta(context);
+    await commodityInventoryService.delete(id, currentUser, meta);
+    return context.json({ success: true, message: 'Commodity inventory deleted successfully' }, 200);
   });
 
   return router;

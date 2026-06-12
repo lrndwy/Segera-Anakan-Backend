@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, isNull, lte, sum } from 'drizzle-orm';
 
 import { WaterStatus } from '../../constants';
 import type { DatabaseClient } from '../../db/client';
@@ -86,12 +86,33 @@ export class WaterReportRepository {
   }
 
   async getVillageWaterStatuses(): Promise<
-    Array<{ villageId: string; villageName: string; status: typeof WaterStatus[keyof typeof WaterStatus]; lastUpdated: Date | null }>
+    Array<{
+      villageId: string;
+      villageName: string;
+      status: typeof WaterStatus[keyof typeof WaterStatus];
+      lastUpdated: Date | null;
+      percentRemaining: number | null;
+      capacityTotalLiters: number;
+      currentVolumeLiters: number;
+    }>
   > {
     const villageRows = await this.db
       .select({ id: villages.id, name: villages.name })
       .from(villages)
       .where(isNull(villages.deletedAt));
+
+    const capacityRows = await this.db
+      .select({
+        villageId: waterAssets.villageId,
+        capacityTotalLiters: sum(waterAssets.capacityLiter),
+      })
+      .from(waterAssets)
+      .where(and(isNull(waterAssets.deletedAt), eq(waterAssets.isActive, true)))
+      .groupBy(waterAssets.villageId);
+
+    const capacityByVillage = new Map(
+      capacityRows.map((row) => [row.villageId, Number(row.capacityTotalLiters ?? 0)]),
+    );
 
     const results = [];
 
@@ -100,6 +121,7 @@ export class WaterReportRepository {
         .select({
           status: waterReports.status,
           reportedAt: waterReports.reportedAt,
+          volumePercent: waterReports.volumePercent,
         })
         .from(waterReports)
         .innerJoin(waterAssets, eq(waterReports.waterAssetId, waterAssets.id))
@@ -108,12 +130,21 @@ export class WaterReportRepository {
         .limit(1);
 
       const latest = latestReport[0];
+      const capacityTotalLiters = capacityByVillage.get(village.id) ?? 0;
+      const percentRemaining = latest?.volumePercent ?? null;
+      const currentVolumeLiters =
+        percentRemaining === null || capacityTotalLiters === 0
+          ? 0
+          : Math.round((capacityTotalLiters * percentRemaining) / 100);
 
       results.push({
         villageId: village.id,
         villageName: village.name,
         status: latest?.status ?? WaterStatus.AMAN,
         lastUpdated: latest?.reportedAt ?? null,
+        percentRemaining,
+        capacityTotalLiters,
+        currentVolumeLiters,
       });
     }
 

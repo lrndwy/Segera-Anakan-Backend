@@ -18,11 +18,17 @@ export type StorageObject = {
   url: string;
 };
 
+export type GetObjectResult = {
+  body: Buffer;
+  contentType: string;
+};
+
 export interface ObjectStorageProvider {
   ensureBucket(bucket: string): Promise<void>;
   listBuckets(): Promise<string[]>;
   deleteBucket(bucket: string): Promise<void>;
   uploadObject(input: UploadObjectInput): Promise<StorageObject>;
+  getObject(bucket: string, key: string): Promise<GetObjectResult>;
   deleteObject(bucket: string, key: string): Promise<void>;
   getPresignedUploadUrl(input: PresignUploadInput): Promise<string>;
   getPresignedDownloadUrl(input: PresignUploadInput): Promise<string>;

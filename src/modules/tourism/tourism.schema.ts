@@ -126,6 +126,7 @@ export const createBookingResponseSchema = z.object({
       url: z.string(),
     })
     .nullable(),
+  qrisPayload: z.string().nullable(),
 });
 
 export const bookingListItemResponseSchema = z.object({

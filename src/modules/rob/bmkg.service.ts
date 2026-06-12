@@ -2,7 +2,7 @@ import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import type { SettingsService } from '../settings/settings.service';
 import type { VillageRepository } from '../village/village.repository';
-import type { WeatherForecastDay, WeatherHourlyItem } from '../weather/weather.types';
+import type { VillageForecastDay, VillageWeatherForecast, WeatherForecastDay, WeatherHourlyItem } from '../weather/weather.types';
 import {
   BMKG_DEFAULT_TIDE_HEIGHT,
   BMKG_FORECAST_DAYS,
@@ -44,6 +44,35 @@ export class BmkgService {
       logger.warn({ error, regionCode, apiUrl }, 'BMKG fetch failed for region, using fallback metrics');
       return this.getFallbackMetrics();
     }
+  }
+
+  async fetchVillagesWeeklyForecast(): Promise<VillageWeatherForecast[]> {
+    const villages = await this.villageRepository.findAllWithBmkgRegion();
+
+    if (villages.length === 0) {
+      const fallback = this.getFallbackVillageMatrixForecast('Kampung Laut');
+      return [fallback];
+    }
+
+    const apiUrl = (await this.settingsService.get('BMKG_API_URL')) ?? env.BMKG_API_URL;
+    const results: VillageWeatherForecast[] = [];
+
+    for (const village of villages) {
+      try {
+        const payload = await this.fetchRegionPayload(apiUrl, village.bmkgRegionCode);
+        const forecasts = this.parseVillageMatrixForecast(payload);
+
+        results.push({
+          villageName: village.name,
+          forecasts: forecasts.length > 0 ? forecasts : this.getFallbackVillageMatrixForecast(village.name).forecasts,
+        });
+      } catch (error) {
+        logger.warn({ error, village: village.name, regionCode: village.bmkgRegionCode }, 'BMKG village forecast fetch failed, using fallback');
+        results.push(this.getFallbackVillageMatrixForecast(village.name));
+      }
+    }
+
+    return results;
   }
 
   async fetchWeeklyForecast(): Promise<WeatherForecastDay[]> {
@@ -123,6 +152,46 @@ export class BmkgService {
   private async fetchMetricsForRegionInternal(apiUrl: string, regionCode: string): Promise<RobMetrics | null> {
     const payload = await this.fetchRegionPayload(apiUrl, regionCode);
     return this.parseBmkgPayload(payload);
+  }
+
+  private parseVillageMatrixForecast(payload: unknown): VillageForecastDay[] {
+    const dayForecasts = this.extractDailyForecasts(payload);
+
+    return dayForecasts.slice(0, BMKG_FORECAST_DAYS).map((dayItems) => {
+      const temps = dayItems.map((item) => this.readNumber(item.t) ?? 26);
+      const humidities = dayItems.map((item) => this.readNumber(item.hu) ?? 0).filter((value) => value > 0);
+      const types = dayItems.map((item) => this.normalizeWeatherType(item.weather_desc ?? item.weather_desc_en));
+
+      return {
+        date: this.extractForecastDate(dayItems[0]),
+        type: this.resolveDominantWeatherType(types),
+        tempMin: temps.length === 0 ? 26 : Math.min(...temps),
+        tempMax: temps.length === 0 ? 30 : Math.max(...temps),
+        humMin: humidities.length === 0 ? 70 : Math.min(...humidities),
+        humMax: humidities.length === 0 ? 90 : Math.max(...humidities),
+      };
+    });
+  }
+
+  private getFallbackVillageMatrixForecast(villageName: string): VillageWeatherForecast {
+    const today = new Date();
+
+    return {
+      villageName,
+      forecasts: Array.from({ length: BMKG_FORECAST_DAYS }, (_, index) => {
+        const date = new Date(today);
+        date.setUTCDate(today.getUTCDate() + index);
+
+        return {
+          date: date.toISOString().slice(0, 10),
+          type: index % 2 === 0 ? 'Cerah' : 'Berawan',
+          tempMin: 22,
+          tempMax: 29,
+          humMin: 66,
+          humMax: 97,
+        };
+      }),
+    };
   }
 
   private parseWeeklyForecast(payload: unknown): WeatherForecastDay[] {

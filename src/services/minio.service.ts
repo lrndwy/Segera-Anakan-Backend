@@ -76,6 +76,15 @@ export class MinioService {
     return buildStoragePublicUrl(file.bucket, file.objectName);
   }
 
+  async getFileContent(file: Pick<FileRow, 'bucket' | 'objectName' | 'mimeType'>) {
+    const result = await this.provider.getObject(file.bucket, file.objectName);
+
+    return {
+      body: result.body,
+      contentType: result.contentType || file.mimeType || 'application/octet-stream',
+    };
+  }
+
   async findById(fileId: string): Promise<FileRow | null> {
     const rows = await this.db.select().from(files).where(eq(files.id, fileId)).limit(1);
     return rows[0] ?? null;

@@ -12,3 +12,17 @@ export type WeatherForecastDay = {
   wind: number;
   hourly: WeatherHourlyItem[];
 };
+
+export type VillageForecastDay = {
+  date: string;
+  type: string;
+  tempMin: number;
+  tempMax: number;
+  humMin: number;
+  humMax: number;
+};
+
+export type VillageWeatherForecast = {
+  villageName: string;
+  forecasts: VillageForecastDay[];
+};

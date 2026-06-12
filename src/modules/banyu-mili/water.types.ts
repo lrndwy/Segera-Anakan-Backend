@@ -10,6 +10,9 @@ export type VillageWaterStatusResponse = {
   villageName: string;
   status: WaterStatus;
   lastUpdated: string;
+  percentRemaining: number | null;
+  capacityTotalLiters: number;
+  currentVolumeLiters: number;
 };
 
 export type WaterPublicAssetResponse = {

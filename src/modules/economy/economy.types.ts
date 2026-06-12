@@ -48,6 +48,7 @@ export type CreateCommodityOrderResponse = {
     villageId: string;
     url: string;
   } | null;
+  qrisPayload: string | null;
 };
 
 export type CommodityPaymentResponse = {

@@ -75,6 +75,9 @@ export class WaterReportService {
       villageName: item.villageName,
       status: item.status,
       lastUpdated: item.lastUpdated?.toISOString() ?? '',
+      percentRemaining: item.percentRemaining,
+      capacityTotalLiters: item.capacityTotalLiters,
+      currentVolumeLiters: item.currentVolumeLiters,
     }));
   }
 

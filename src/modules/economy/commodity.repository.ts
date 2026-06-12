@@ -1,4 +1,6 @@
-import { and, asc, eq, ilike, or } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+
+import { and, asc, eq, ilike, or, sql } from 'drizzle-orm';
 
 import type { DatabaseClient } from '../../db/client';
 import { commodities, commodityCategories } from '../../db/schema';
@@ -47,5 +49,41 @@ export class CommodityRepository {
       .where(eq(commodities.id, commodityId))
       .limit(1);
     return rows[0] ?? null;
+  }
+
+  async findCommodityByNameInsensitive(name: string) {
+    const rows = await this.db
+      .select()
+      .from(commodities)
+      .where(sql`lower(${commodities.name}) = lower(${name.trim()})`)
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
+  async findOrCreateByName(name: string) {
+    const existing = await this.findCommodityByNameInsensitive(name);
+
+    if (existing) {
+      return existing;
+    }
+
+    const defaultCategory = await this.db.select().from(commodityCategories).orderBy(asc(commodityCategories.name)).limit(1);
+    const categoryId = defaultCategory[0]?.id;
+
+    if (!categoryId) {
+      throw new Error('No commodity category configured');
+    }
+
+    const rows = await this.db
+      .insert(commodities)
+      .values({
+        id: randomUUID(),
+        categoryId,
+        name: name.trim(),
+      })
+      .returning();
+
+    return rows[0] as NonNullable<(typeof rows)[0]>;
   }
 }

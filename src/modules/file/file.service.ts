@@ -14,6 +14,7 @@ import {
   type AllowedMimeType,
 } from './file.constants';
 import { FileRepository } from './file.repository';
+import { buildFileDownloadUrl } from '../../utils/file-url';
 import type { FileDetailResponse, FileServiceMeta, FileUploadResponse } from './file.types';
 
 export type UploadFilePayload = {
@@ -108,7 +109,7 @@ export class FileService {
 
     return toUploadResponse({
       ...uploadedFile,
-      url: this.minioService.getFileUrl(uploadedFile),
+      url: buildFileDownloadUrl(uploadedFile.id),
     });
   }
 
@@ -123,7 +124,23 @@ export class FileService {
 
     return {
       id: record.file.id,
-      url: this.minioService.getFileUrl(record.file),
+      url: buildFileDownloadUrl(record.file.id),
+    };
+  }
+
+  async downloadPublic(fileId: string): Promise<{ body: Buffer; contentType: string; originalName: string }> {
+    const file = await this.fileRepository.findById(fileId);
+
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    const content = await this.minioService.getFileContent(file);
+
+    return {
+      body: content.body,
+      contentType: content.contentType,
+      originalName: file.originalName,
     };
   }
 

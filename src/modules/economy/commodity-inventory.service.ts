@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 
 import { MovementType, UserRole } from '../../constants';
 import type { Database } from '../../db/client';
-import { ForbiddenException, NotFoundException, ValidationException } from '../../lib/exceptions';
+import { ConflictException, ForbiddenException, NotFoundException, ValidationException } from '../../lib/exceptions';
 import { buildPaginationMeta, normalizePagination } from '../../lib/pagination';
 import { runTransaction } from '../../lib/transaction';
 import { assertVillageAccess } from '../../policies/village-access.policy';
@@ -19,6 +19,7 @@ import type {
   ListCommodityInventoryQuery,
   UpdateCommodityInventoryInput,
 } from './economy.schema';
+import { buildFileDownloadUrl } from '../../utils/file-url';
 import type { CommodityInventoryDetailResponse, CommodityInventoryListItemResponse, EconomyServiceMeta, StockMovementResponse } from './economy.types';
 import { toNumber } from './economy.utils';
 
@@ -47,7 +48,7 @@ const toListItem = (row: {
   availableWeightKg: toNumber(row.inventory.availableWeightKg),
   pricePerKg: toNumber(row.inventory.pricePerKg),
   fileId: row.inventory.fileId,
-  imageUrl: row.imageUrl,
+  imageUrl: row.inventory.fileId ? buildFileDownloadUrl(row.inventory.fileId) : null,
 });
 
 export class CommodityInventoryService {
@@ -177,8 +178,17 @@ export class CommodityInventoryService {
     assertVillageAccess(currentUser, fisherman.villageId);
     if (currentUser.role === UserRole.KADER_DESA) throw new ForbiddenException();
 
-    const commodity = await this.commodityRepository.findCommodityById(input.commodityId);
-    if (!commodity) throw new NotFoundException('Commodity not found');
+    let commodityId = input.commodityId;
+
+    if (input.commodityName) {
+      const commodity = await this.commodityRepository.findOrCreateByName(input.commodityName);
+      commodityId = commodity.id;
+    } else if (commodityId) {
+      const commodity = await this.commodityRepository.findCommodityById(commodityId);
+      if (!commodity) throw new NotFoundException('Commodity not found');
+    } else {
+      throw new ValidationException('Validation failed', [{ field: 'commodityName', message: 'Either commodityName or commodityId is required' }]);
+    }
 
     const resolvedFileId = await this.resolveImageFileId(input.fileId);
 
@@ -188,7 +198,7 @@ export class CommodityInventoryService {
       const created = await inventoryRepo.create({
         id: randomUUID(),
         fishermanId: input.fishermanId,
-        commodityId: input.commodityId,
+        commodityId,
         availableWeightKg: input.availableWeightKg.toString(),
         pricePerKg: input.pricePerKg.toString(),
         ...(resolvedFileId !== undefined ? { fileId: resolvedFileId } : {}),
@@ -302,5 +312,33 @@ export class CommodityInventoryService {
     const detail = await this.inventoryRepository.findByIdWithDetails(inventoryId);
     if (!detail) throw new NotFoundException('Commodity inventory not found');
     return toListItem(detail);
+  }
+
+  async delete(inventoryId: string, currentUser: CurrentUser, meta: EconomyServiceMeta): Promise<void> {
+    const record = await this.inventoryRepository.findByIdWithDetails(inventoryId);
+    if (!record) throw new NotFoundException('Commodity inventory not found');
+    assertVillageAccess(currentUser, record.villageId);
+    if (currentUser.role === UserRole.KADER_DESA) throw new ForbiddenException();
+
+    const hasOrders = await this.inventoryRepository.hasOrderItems(inventoryId);
+    if (hasOrders) {
+      throw new ConflictException('Commodity inventory cannot be deleted because it is referenced by existing orders');
+    }
+
+    const deleted = await this.inventoryRepository.delete(inventoryId);
+    if (!deleted) throw new NotFoundException('Commodity inventory not found');
+
+    await this.auditLogService.create({
+      userId: meta.actorUserId,
+      action: 'DELETE_COMMODITY_INVENTORY',
+      module: 'ECONOMY',
+      entityType: 'commodity_inventory',
+      entityId: inventoryId,
+      ipAddress: meta.ipAddress,
+      oldData: {
+        commodityName: record.commodityName,
+        availableWeightKg: toNumber(record.inventory.availableWeightKg),
+      },
+    });
   }
 }

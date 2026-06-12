@@ -6,6 +6,7 @@ import { successResponse } from '../../lib/response';
 import {
   errorEnvelopeSchema,
   successEnvelopeSchema,
+  villageWeatherForecastSchema,
   weatherForecastDaySchema,
 } from './weather.schema';
 import type { WeatherService } from './weather.service';
@@ -32,9 +33,33 @@ export const createWeatherRouter = (weatherService: WeatherService) => {
     },
   });
 
+  const getVillagesForecastRoute = createRoute({
+    method: 'get',
+    path: '/villages-forecast',
+    tags: ['Weather'],
+    summary: 'Get 7-day weather forecast per village',
+    security: [],
+    responses: {
+      200: {
+        description: 'Village weather forecast retrieved',
+        content: {
+          'application/json': {
+            schema: successEnvelopeSchema(z.array(villageWeatherForecastSchema)),
+          },
+        },
+      },
+      500: { description: 'Server error', content: { 'application/json': { schema: errorEnvelopeSchema } } },
+    },
+  });
+
   router.openapi(getForecastRoute, async (context) => {
     const forecast = await weatherService.getForecast();
     return context.json(successResponse('Prakiraan cuaca berhasil diambil', forecast), 200);
+  });
+
+  router.openapi(getVillagesForecastRoute, async (context) => {
+    const forecast = await weatherService.getVillagesForecast();
+    return context.json(successResponse('Prakiraan cuaca per desa berhasil diambil', forecast), 200);
   });
 
   return router;

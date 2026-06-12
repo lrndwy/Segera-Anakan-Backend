@@ -75,6 +75,9 @@ export const villageWaterStatusResponseSchema = z.object({
   villageName: z.string(),
   status: waterStatusSchema,
   lastUpdated: z.string(),
+  percentRemaining: z.number().int().min(0).max(100).nullable(),
+  capacityTotalLiters: z.number().int().min(0),
+  currentVolumeLiters: z.number().int().min(0),
 });
 
 export const waterPublicAssetResponseSchema = z.object({

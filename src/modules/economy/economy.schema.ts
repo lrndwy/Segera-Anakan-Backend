@@ -42,13 +42,19 @@ export const updateFishermanSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export const createCommodityInventorySchema = z.object({
-  fishermanId: z.string().uuid(),
-  commodityId: z.string().uuid(),
-  availableWeightKg: z.number().positive(),
-  pricePerKg: z.number().positive(),
-  fileId: z.string().uuid().optional(),
-});
+export const createCommodityInventorySchema = z
+  .object({
+    fishermanId: z.string().uuid(),
+    commodityName: z.string().trim().min(1).optional(),
+    commodityId: z.string().uuid().optional(),
+    availableWeightKg: z.number().positive(),
+    pricePerKg: z.number().positive(),
+    fileId: z.string().uuid().optional(),
+  })
+  .refine((data) => Boolean(data.commodityName || data.commodityId), {
+    message: 'Either commodityName or commodityId is required',
+    path: ['commodityName'],
+  });
 
 export const updateCommodityInventorySchema = z.object({
   availableWeightKg: z.number().positive().optional(),
@@ -134,6 +140,7 @@ export const createCommodityOrderResponseSchema = z.object({
   invoiceNumber: z.string(),
   totalAmount: z.number(),
   qris: z.object({ villageId: z.string().uuid(), url: z.string() }).nullable(),
+  qrisPayload: z.string().nullable(),
 });
 
 export const commodityPaymentResponseSchema = z.object({

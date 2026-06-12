@@ -79,6 +79,24 @@ export class S3StorageProvider implements ObjectStorageProvider {
     };
   }
 
+  async getObject(bucket: string, key: string) {
+    const response = await this.s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    const chunks: Uint8Array[] = [];
+
+    if (!response.Body) {
+      throw new Error(`Object not found: ${bucket}/${key}`);
+    }
+
+    for await (const chunk of response.Body as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+
+    return {
+      body: Buffer.concat(chunks),
+      contentType: response.ContentType ?? 'application/octet-stream',
+    };
+  }
+
   async deleteObject(bucket: string, key: string): Promise<void> {
     await this.s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
